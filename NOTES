@@ -1,0 +1,28 @@
+thread entrypoints
+
+- homepage view:
+
+  1. `database`: from h2s?
+
+- database view:
+
+  1. `database`: from h1?
+  2. `table`: on table names, h2?
+
+- table view:
+
+  1. `table`: table name `<h1/>`
+  2. `column`: columns `<th>/>`
+  3. `rows`: rows `tbody > tr > td.type-pk` ?
+  4. `values`: `tbody td`
+
+- row view:
+  1. `row`: on h1?
+  2. `values`: `tbody td`
+
+endpoints:
+
+1. Get unresolved threads for different views
+2. Thread actions (new, mark/unmarked)
+3. Comment actions (new, edit, delete)
+4. Reactions actials (add, remove)
