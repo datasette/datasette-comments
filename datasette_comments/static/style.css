@@ -1,0 +1,90 @@
+.datasette-comments * {
+  box-sizing: border-box;
+}
+.datasette-comments button {
+  cursor: pointer;
+}
+.datasette-comments button:disabled {
+  cursor: initial;
+}
+
+.datasette-comments-thread {
+  background: white;
+  border: 1px solid black;
+  border-radius: 1rem;
+  margin: 0px;
+  padding: 0.5rem;
+  width: 280px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.datasette-comments-thread-comments .datasette-comments-comment {
+  border-bottom: 1px solid #ededed;
+}
+.datasette-comments-thread-comments .datasette-comments-comment:last-child {
+  border-bottom: none;
+}
+
+.datasette-comments-comment {
+  padding-top: 0.5rem;
+  padding-bottom: 1rem;
+  padding-right: 1rem;
+  padding-left: 4px;
+}
+
+.datasette-comments-add-reaction {
+  cursor: pointer;
+  display: inline;
+  border: none;
+  padding: 0;
+  background: #dedede;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+}
+.datasette-comments-add-reaction svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* drafts */
+.datasette-comments-draft {
+}
+
+.datasette-comments-draft img {
+  border-radius: 50%;
+}
+
+.datasette-comments-draft textarea {
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  background: #ececec;
+  padding: 4px;
+}
+
+.draft-bottom-drawer {
+  padding: 0.5rem 0;
+  display: flex;
+}
+.draft-bottom-drawer > div {
+  margin-left: auto;
+}
+.draft-bottom-drawer button {
+  border: none;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+.draft-cancel-button {
+  background: #d9d9d9;
+}
+.draft-add-button {
+  background: #276890;
+  color: #d9d9d9;
+  margin-left: 0.5rem;
+}
+
+.draft-add-button:disabled {
+  background: #888;
+}
