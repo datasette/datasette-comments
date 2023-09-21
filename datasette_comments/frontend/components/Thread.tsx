@@ -21,27 +21,26 @@ function Comment(props: { comment: CommentData }) {
         </div>
       </div>
 
-      <div style={{ margin: ".25rem .5rem" }}>{props.comment.contents}</div>
-      <div>
+      <div style={{ margin: ".25rem .5rem" }}>
         {comment.render_nodes.map((node) => {
           switch (node.node_type) {
             case "raw":
               return <span>{node.value}</span>;
             case "mention":
               return (
-                <span>
+                <span class="mention">
                   <a href={"#TODO"}>{node.value}</a>
                 </span>
               );
             case "tag":
               return (
-                <span>
+                <span class="tag">
                   <a href={"#TODO"}>{node.value}</a>
                 </span>
               );
             case "url":
               return (
-                <span>
+                <span class="url">
                   <a href={node.value} target="_no">
                     {node.value}
                   </a>

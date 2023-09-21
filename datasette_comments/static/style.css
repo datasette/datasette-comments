@@ -33,6 +33,13 @@
   padding-left: 4px;
 }
 
+.datasette-comments-comment .tag a {
+  text-decoration: none;
+}
+.datasette-comments-comment .mention a {
+  text-decoration: none;
+}
+
 .datasette-comments-add-reaction {
   cursor: pointer;
   display: inline;
@@ -62,6 +69,7 @@
   border-radius: 6px;
   background: #ececec;
   padding: 4px;
+  resize: none;
 }
 
 .draft-bottom-drawer {
