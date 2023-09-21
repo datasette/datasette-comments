@@ -13,6 +13,7 @@ pm.add_hookspecs(hookspecs)
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 
+
 class Routes:
     async def thread_comments(scope, receive, datasette, request):
         # TODO make sure actor can see the thread target (db, table, etc.)
@@ -61,7 +62,10 @@ class Routes:
                 UPDATE datasette_comments_threads
                 SET resolved_at = datetime('now')
                 WHERE id = ?
-            """, (thread_id,), block=True)
+            """,
+            (thread_id,),
+            block=True,
+        )
 
         return Response.json({"ok": True})
 
@@ -82,20 +86,20 @@ class Routes:
         # validate the target is good, depending on type
         if type == "database":
             if database is None:
-                return Response.json({"message": "TODO" }, status=400)
+                return Response.json({"message": "TODO"}, status=400)
         elif type == "table":
             if any(item is None for item in (database, table)):
-                return Response.json({"message": "TODO" }, status=400)
+                return Response.json({"message": "TODO"}, status=400)
         elif type == "column":
             if any(item is None for item in (database, table, column)):
-                return Response.json({"message": "TODO" }, status=400)
+                return Response.json({"message": "TODO"}, status=400)
             raise Exception("TODO")
         elif type == "row":
             if any(item is None for item in (database, table, rowids)):
-                return Response.json({"message": "TODO" }, status=400)
+                return Response.json({"message": "TODO"}, status=400)
         elif type == "value":
             if any(item is None for item in (database, table, column, rowids)):
-              raise Exception("TODO")
+                raise Exception("TODO")
         else:
             raise Exception("TODO handle wrong type")
 
@@ -108,13 +112,15 @@ class Routes:
             cursor = conn.cursor()
             cursor.execute("begin")
             params = {
-                  "id": id,
-                  "creator_actor_id": actor_id,
-                  "target_type": type,
-                  "target_database": database,
-                  "target_table": table if type != "database" else None,
-                  "target_column": column if type in ("column", "row", "value") else None,
-                  "target_row_ids": json.dumps(rowids) if type in ("row", "value") else None,
+                "id": id,
+                "creator_actor_id": actor_id,
+                "target_type": type,
+                "target_database": database,
+                "target_table": table if type != "database" else None,
+                "target_column": column if type in ("column", "row", "value") else None,
+                "target_row_ids": json.dumps(rowids)
+                if type in ("row", "value")
+                else None,
             }
 
             cursor.execute(
@@ -234,7 +240,6 @@ class Routes:
             }
         )
 
-
     async def table_view_threads(scope, receive, datasette, request):
         # TODO ensure actor has permission to view the table
 
@@ -244,11 +249,11 @@ class Routes:
         data = json.loads((await request.post_body()).decode("utf8"))
         database = data.get("database")
         table = data.get("table")
-        rowids_encoded:List[str] = data.get("rowids")
+        rowids_encoded: List[str] = data.get("rowids")
         rowids: List[List[str]] = []
         for rowid_encoded in rowids_encoded:
-          parts = [tilde_decode(b) for b in rowid_encoded.split(",")]
-          rowids.append(parts)
+            parts = [tilde_decode(b) for b in rowid_encoded.split(",")]
+            rowids.append(parts)
 
         response = await datasette.get_internal_database().execute(
             """
@@ -280,12 +285,15 @@ class Routes:
            """,
             (database, table, json.dumps(rowids)),
         )
-        row_threads = [{
-            "id": row["id"],
-            "rowids":
-                "/".join(map(lambda x: tilde_encode(x), json.loads(row["target_row_ids"])))
-
-        } for row in response.rows]
+        row_threads = [
+            {
+                "id": row["id"],
+                "rowids": "/".join(
+                    map(lambda x: tilde_encode(x), json.loads(row["target_row_ids"]))
+                ),
+            }
+            for row in response.rows
+        ]
 
         return Response.json(
             {
@@ -307,7 +315,10 @@ class Routes:
 def register_routes():
     return [
         (r"^/-/datasette-comments/thread/new$", Routes.thread_new),
-        (r"^/-/datasette-comments/thread/comments/(?P<thread_id>.*)$", Routes.thread_comments,),
+        (
+            r"^/-/datasette-comments/thread/comments/(?P<thread_id>.*)$",
+            Routes.thread_comments,
+        ),
         (r"^/-/datasette-comments/thread/comment/add$", Routes.comment_add),
         (r"^/-/datasette-comments/threads/table_view$", Routes.table_view_threads),
         (r"^/-/datasette-comments/threads/mark_resolved$", Routes.thread_mark_resolved),
