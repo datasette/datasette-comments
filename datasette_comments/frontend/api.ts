@@ -22,7 +22,7 @@ export interface CommentData {
   contents: string;
   created_at: string;
   render_nodes: {
-    node_type: "raw" | "mention" | "url" | "tag";
+    node_type: "raw" | "mention" | "url" | "tag" | "linebreak";
     value: string;
   }[];
 }

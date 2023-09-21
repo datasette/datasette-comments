@@ -71,9 +71,10 @@ function ThreadPopup(props: {
   async function onMarkResolved(thread_id: string): Promise<boolean> {
     return Api.threadMarkResolved(thread_id).then(() => true);
   }
-  const transform = `translate(${
-    attachTo.offsetLeft + attachTo.offsetWidth + 30
-  }px, ${attachTo.offsetTop}px`;
+  const rect = attachTo.getBoundingClientRect();
+  const transform = `translate(${rect.left + attachTo.offsetWidth + 10}px, ${
+    rect.top
+  }px`;
   return (
     <div>
       <div

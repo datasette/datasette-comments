@@ -24,6 +24,8 @@ function Comment(props: { comment: CommentData }) {
       <div style={{ margin: ".25rem .5rem" }}>
         {comment.render_nodes.map((node) => {
           switch (node.node_type) {
+            case "linebreak":
+              return <br />;
             case "raw":
               return <span>{node.value}</span>;
             case "mention":

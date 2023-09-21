@@ -26,3 +26,17 @@ endpoints:
 2. Thread actions (new, mark/unmarked)
 3. Comment actions (new, edit, delete)
 4. Reactions actials (add, remove)
+
+Comment views
+
+```
+/-/datasette-comments/all
+/-/datasette-comments/me
+/-/datasette-comments/tag/<tag>
+/-/datasette-comments/mention/<tag>
+```
+
+- All un-resolived threads, sectioned into databases/tables/etc.
+- All unresoleved threads pertaining to me
+- All unresolved threads with a tag
+- All unresolved threads with a mention

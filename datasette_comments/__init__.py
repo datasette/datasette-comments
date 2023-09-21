@@ -14,6 +14,44 @@ pm.add_hookspecs(hookspecs)
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 
 
+def insert_comment(thread_id: str, author_actor_id: str, contents: str):
+    id = str(ULID()).lower()
+    parsed = comment_parser.parse(contents)
+    mentions = list(set(mention.value[1:] for mention in parsed.mentions))
+    hashtags = list(set(mention.value[1:] for mention in parsed.tags))
+
+    SQL = """
+        INSERT INTO datasette_comments_comments(
+          id,
+          thread_id,
+          author_actor_id,
+          contents,
+          mentions,
+          hashtags,
+          past_revisions
+        )
+        VALUES (
+          :id,
+          :thread_id,
+          :author_actor_id,
+          :contents,
+          :mentions,
+          :hashtags,
+          json_array()
+        )
+    """
+    params = {
+        "id": id,
+        "thread_id": thread_id,
+        "author_actor_id": author_actor_id,
+        "contents": contents,
+        "mentions": json.dumps(mentions),
+        "hashtags": json.dumps(hashtags),
+    }
+
+    return (SQL, params)
+
+
 class Routes:
     async def thread_comments(scope, receive, datasette, request):
         # TODO make sure actor can see the thread target (db, table, etc.)
@@ -151,34 +189,7 @@ class Routes:
                 (cursor.lastrowid,),
             ).fetchone()[0]
 
-            cursor.execute(
-                """
-                    INSERT INTO datasette_comments_comments(
-                      id,
-                      thread_id,
-                      author_actor_id,
-                      contents,
-                      mentions,
-                      hashtags,
-                      past_revisions
-                    )
-                    VALUES (
-                      :id,
-                      :thread_id,
-                      :author_actor_id,
-                      :contents,
-                      json_array(),
-                      json_array(),
-                      json_array()
-                    )
-                    """,
-                {
-                    "id": str(ULID()).lower(),
-                    "thread_id": thread_id,
-                    "author_actor_id": actor_id,
-                    "contents": comment,
-                },
-            )
+            cursor.execute(*(insert_comment(thread_id, actor_id, comment)))
             cursor.execute("commit")
             return thread_id
 
@@ -205,32 +216,7 @@ class Routes:
         contents = data.get("contents")
 
         await datasette.get_internal_database().execute_write(
-            """
-                    INSERT INTO datasette_comments_comments(
-                      id,
-                      thread_id,
-                      author_actor_id,
-                      contents,
-                      mentions,
-                      hashtags,
-                      past_revisions
-                    )
-                    VALUES (
-                      :id,
-                      :thread_id,
-                      :author_actor_id,
-                      :contents,
-                      json_array(),
-                      json_array(),
-                      json_array()
-                    )
-                    """,
-            {
-                "id": str(ULID()).lower(),
-                "thread_id": thread_id,
-                "author_actor_id": actor_id,
-                "contents": contents,
-            },
+            *(insert_comment(thread_id, actor_id, contents)),
             block=True,
         )
 
@@ -310,6 +296,31 @@ class Routes:
     async def debug_view(scope, receive, datasette, request):
         return Response.html(await datasette.render_template("debug.html"))
 
+    async def tag_view(scope, receive, datasette, request):
+        tag = request.url_vars["tag"]
+        results = await datasette.get_internal_database().execute(
+            """
+            WITH threads_with_tags AS (
+              SELECT distinct thread_id
+              FROM datasette_comments_comments
+              WHERE (
+                SELECT 1
+                FROM json_each(hashtags)
+                WHERE value = :tag
+              )
+            )
+            SELECT
+              *
+            FROM threads_with_tags
+            LEFT JOIN datasette_comments_threads ON datasette_comments_threads.id = threads_with_tags.thread_id
+            WHERE NOT marked_resolved
+
+
+        """,
+            {"tag": tag},
+        )
+        return Response.json([dict(row) for row in results.rows])
+
 
 @hookimpl
 def register_routes():
@@ -323,6 +334,7 @@ def register_routes():
         (r"^/-/datasette-comments/threads/table_view$", Routes.table_view_threads),
         (r"^/-/datasette-comments/threads/mark_resolved$", Routes.thread_mark_resolved),
         (r"^/-/datasette-comments/debug$", Routes.debug_view),
+        (r"^/-/datasette-comments/tags/(?P<tag>.*)$", Routes.tag_view),
     ]
 
 
