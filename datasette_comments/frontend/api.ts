@@ -14,6 +14,11 @@ export type CommentTargetType =
   | { type: "table"; database: string; table: string }
   | { type: "row"; database: string; table: string; rowids: string };
 
+export interface ReactionData {
+  reactor_actor_id: string;
+  reaction: string;
+}
+
 export interface CommentData {
   id: string;
   author_actor_id: string;
@@ -25,6 +30,7 @@ export interface CommentData {
     node_type: "raw" | "mention" | "url" | "tag" | "linebreak";
     value: string;
   }[];
+  reactions: ReactionData[];
 }
 export class Api {
   static async threadNew(
@@ -99,5 +105,41 @@ export class Api {
         contents,
       },
     });
+  }
+  static async reactionAdd(
+    comment_id: string,
+    reaction: string
+  ): Promise<{
+    ok: boolean;
+  }> {
+    return api(`/-/datasette-comments/reaction/add`, {
+      method: "POST",
+      data: {
+        comment_id,
+        reaction,
+      },
+    });
+  }
+  static async reactionRemove(
+    comment_id: string,
+    reaction: string
+  ): Promise<{
+    ok: boolean;
+  }> {
+    return api(`/-/datasette-comments/reaction/remove`, {
+      method: "POST",
+      data: {
+        comment_id,
+        reaction,
+      },
+    });
+  }
+  static async reactions(comment_id: string): Promise<
+    {
+      reactor_actor_id: string;
+      reaction: string;
+    }[]
+  > {
+    return api(`/-/datasette-comments/reactions/${comment_id}`);
   }
 }

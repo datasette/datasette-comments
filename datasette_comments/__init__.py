@@ -63,7 +63,17 @@ class Routes:
                 id,
                 author_actor_id,
                 created_at,
-                contents
+                contents,
+                (
+                  select json_group_array(
+                    json_object(
+                      'reactor_actor_id', reactor_actor_id,
+                      'reaction', reaction
+                    )
+                  )
+                  from datasette_comments_reactions
+                  where comment_id == datasette_comments_comments.id
+                ) as reactions
               from datasette_comments_comments
               where thread_id = ?
               order by created_at
@@ -84,6 +94,7 @@ class Routes:
 
             results = comment_parser.parse(row["contents"])
             row["render_nodes"] = results.rendered
+            row["reactions"] = json.loads(row["reactions"]) if row["reactions"] else []
         return Response.json({"ok": True, "data": rows})
 
     async def thread_mark_resolved(scope, receive, datasette, request):
@@ -293,6 +304,94 @@ class Routes:
             }
         )
 
+    async def reactions(scope, receive, datasette, request):
+        # TODO permissions
+        comment_id = request.url_vars["comment_id"]
+
+        results = await datasette.get_internal_database().execute(
+            """
+              SELECT
+                reactor_actor_id,
+                reaction
+              FROM datasette_comments_reactions
+              WHERE comment_id == :comment_id
+            """,
+            {"comment_id": comment_id},
+        )
+        return Response.json([dict(row) for row in results.rows])
+
+    async def reaction_add(scope, receive, datasette, request):
+        # TODO permissions
+        if request.method != "POST":
+            return Response.text("POST required", status=405)
+
+        data = json.loads((await request.post_body()).decode("utf8"))
+
+        id = str(ULID()).lower()
+        comment_id = data.get("comment_id")
+        reactor_actor_id = request.actor.get("id")
+        reaction = data.get("reaction")
+
+        # TODO better error messages
+        if any(value is None for value in (comment_id, reactor_actor_id, reaction)):
+            return Response.json({}, status=400)
+
+        await datasette.get_internal_database().execute_write(
+            """
+              INSERT INTO datasette_comments_reactions(
+                id,
+                comment_id,
+                reactor_actor_id,
+                reaction
+              )
+              VALUES (
+                :id,
+                :comment_id,
+                :reactor_actor_id,
+                :reaction
+              )
+            """,
+            {
+                "id": id,
+                "comment_id": comment_id,
+                "reactor_actor_id": reactor_actor_id,
+                "reaction": reaction,
+            },
+            block=True,
+        )
+        return Response.json({"ok": True})
+
+    async def reaction_remove(scope, receive, datasette, request):
+        # TODO permissions
+        if request.method != "POST":
+            return Response.text("POST required", status=405)
+
+        data = json.loads((await request.post_body()).decode("utf8"))
+
+        comment_id = data.get("comment_id")
+        reactor_actor_id = request.actor.get("id")
+        reaction = data.get("reaction")
+
+        # TODO better error messages
+        if any(value is None for value in (comment_id, reactor_actor_id, reaction)):
+            return Response.json({}, status=400)
+
+        await datasette.get_internal_database().execute_write(
+            """
+              DELETE FROM datasette_comments_reactions
+              WHERE comment_id = :comment_id
+                AND reactor_actor_id = :reactor_actor_id
+                AND reaction = :reaction
+            """,
+            {
+                "comment_id": comment_id,
+                "reactor_actor_id": reactor_actor_id,
+                "reaction": reaction,
+            },
+            block=True,
+        )
+        return Response.json({"ok": True})
+
     async def debug_view(scope, receive, datasette, request):
         return Response.html(await datasette.render_template("debug.html"))
 
@@ -319,13 +418,28 @@ class Routes:
         """,
             {"tag": tag},
         )
-        return Response.json([dict(row) for row in results.rows])
+        data = [dict(row) for row in results.rows]
+        actor_id, profile_photo_url = await author_from_request(datasette, request)
+        return Response.html(
+            await datasette.render_template(
+                "tag_view.html",
+                {
+                    "data": data,
+                    "actor_id": actor_id,
+                    "profile_photo_url": profile_photo_url,
+                    "tag": tag,
+                },
+            )
+        )
 
 
 @hookimpl
 def register_routes():
     return [
         (r"^/-/datasette-comments/thread/new$", Routes.thread_new),
+        (r"^/-/datasette-comments/reaction/add$", Routes.reaction_add),
+        (r"^/-/datasette-comments/reaction/remove$", Routes.reaction_remove),
+        (r"^/-/datasette-comments/reactions/(?P<comment_id>.*)$", Routes.reactions),
         (
             r"^/-/datasette-comments/thread/comments/(?P<thread_id>.*)$",
             Routes.thread_comments,
@@ -384,17 +498,36 @@ def menu_links(datasette, actor):
     return inner
 
 
+async def author_from_request(datasette, request):
+    actor_id = (request.actor or {}).get("id")
+    if actor_id:
+        profile_photo_url = (
+            (await datasette.actors_from_ids([actor_id]))
+            .get(actor_id)
+            .get("profile_picture_url")
+        )
+    else:
+        profile_photo_url = None
+    return (actor_id, profile_photo_url)
+
+
+SUPPORTED_VIEWS = ("index", "database", "table", "row")
+
+
 @hookimpl
 async def extra_body_script(
     template, database, table, columns, view_name, request, datasette
 ):
     # TODO only include if actor can make comments
-    if view_name in ("index", "database", "table", "row"):
+    if view_name in SUPPORTED_VIEWS:
+        actor_id, profile_photo_url = await author_from_request(datasette, request)
         meta = json.dumps(
             {
                 "view_name": view_name,
                 "database": database,
                 "table": table,
+                "actor_id": actor_id,
+                "profile_photo_url": profile_photo_url,
             }
         )
         return f"window.DATASETTE_COMMENTS_META = {meta}"
@@ -402,12 +535,13 @@ async def extra_body_script(
 
 @hookimpl
 def extra_js_urls(template, database, table, columns, view_name, request, datasette):
-    return [
-        # TODO only include if actor can make comments
-        datasette.urls.path(
-            "/-/static-plugins/datasette-comments/content_script.min.js"
-        )
-    ]
+    if view_name in SUPPORTED_VIEWS:
+        return [
+            # TODO only include if actor can make comments
+            datasette.urls.path(
+                "/-/static-plugins/datasette-comments/content_script.min.js"
+            )
+        ]
 
 
 @hookimpl

@@ -116,7 +116,10 @@ CREATE TABLE IF NOT EXISTS datasette_comments_reactions(
   reactor_actor_id TEXT,
 
   --- The reaction a user left, usually an emoji.
-  reaction TEXT
+  reaction TEXT,
+
+  --- only 1 reaction per comment per user per reaction
+  UNIQUE (comment_id, reactor_actor_id, reaction)
 );
 
 -- Get all reactions for a specific comment.

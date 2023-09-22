@@ -1,7 +1,136 @@
-import { h } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { h, createContext } from "preact";
+import { useEffect, useState, useContext } from "preact/hooks";
 import { ICONS } from "../icons";
-import { CommentData } from "../api";
+import { Api, CommentData, ReactionData } from "../api";
+
+interface AuthorContext {
+  author_actor_id: string;
+  profile_photo_url: string;
+}
+const Author = createContext<AuthorContext>({
+  author_actor_id: "",
+  profile_photo_url: "",
+});
+
+function ReactionSection(props: {
+  comment_id: string;
+  initialReactions: ReactionData[];
+}) {
+  const { author_actor_id } = useContext(Author);
+  const [reactions, setReactions] = useState<ReactionData[]>(
+    props.initialReactions
+  );
+  const [showReactionPopup, setShowReactionPopup] = useState<boolean>(false);
+
+  function refreshReactions() {
+    Api.reactions(props.comment_id).then((data) => setReactions(data));
+  }
+  function onClickAddReaction(e) {
+    e.stopPropagation();
+    setShowReactionPopup(true);
+  }
+  function onReact(reaction: string) {
+    Api.reactionAdd(props.comment_id, reaction).then(() => refreshReactions());
+  }
+
+  // popup show/hide
+  useEffect(() => {
+    if (showReactionPopup) {
+      // close popup when user clicks outside of it
+      function onClick(e) {
+        let current = e.target;
+        while (current) {
+          current = current.parentElement;
+          if (current?.classList?.contains("datasette-comments-reactions")) {
+            break;
+          }
+        }
+        if (!current) {
+          setShowReactionPopup(false);
+        }
+      }
+      document.addEventListener("click", onClick);
+      return () => {
+        document.removeEventListener("click", onClick);
+      };
+    }
+  }, [showReactionPopup, setShowReactionPopup]);
+
+  const reactionStats = new Map<string, string[]>();
+  for (const reaction of reactions) {
+    if (reactionStats.has(reaction.reaction)) {
+      reactionStats.set(reaction.reaction, [
+        ...reactionStats.get(reaction.reaction),
+        reaction.reactor_actor_id,
+      ]);
+    } else {
+      reactionStats.set(reaction.reaction, [reaction.reactor_actor_id]);
+    }
+  }
+
+  return (
+    <div class="datasette-comments-reactions">
+      {Array.from(reactionStats).map(([reaction, reactors], i) => (
+        <div>
+          <button
+            key={i}
+            onClick={() => {
+              if (
+                reactionStats
+                  .get(reaction)
+                  ?.find((id) => id === author_actor_id)
+              ) {
+                Api.reactionRemove(props.comment_id, reaction).then(() =>
+                  refreshReactions()
+                );
+              } else {
+                onReact(reaction);
+              }
+            }}
+            style={{
+              border:
+                reactors.indexOf(author_actor_id) >= 0
+                  ? "1px solid red"
+                  : "1px solid grey",
+            }}
+          >
+            {reaction} {reactors.length}
+          </button>
+        </div>
+      ))}
+      <div>
+        <button
+          class="datasette-comments-add-reaction"
+          dangerouslySetInnerHTML={{ __html: ICONS.ADD_REACTION }}
+          onClick={onClickAddReaction}
+        ></button>
+      </div>
+      <div style="position:relative">
+        {showReactionPopup && (
+          <div className="popup">
+            {["👍", "👎", "😀", "😕", "🎉", "❤️", "🚀", "👀"]
+              .filter((reaction) => {
+                const stats = reactionStats.get(reaction);
+                return !stats ? true : stats.indexOf(author_actor_id) < 0;
+              })
+              .map((d) => (
+                <button
+                  key={d}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReact(d);
+                    setShowReactionPopup(false);
+                  }}
+                >
+                  {d}
+                </button>
+              ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function Comment(props: { comment: CommentData }) {
   const { comment } = props;
@@ -37,7 +166,9 @@ function Comment(props: { comment: CommentData }) {
             case "tag":
               return (
                 <span class="tag">
-                  <a href={"#TODO"}>{node.value}</a>
+                  <a href={`/-/datasette-comments/tags/${node.value.slice(1)}`}>
+                    {node.value}
+                  </a>
                 </span>
               );
             case "url":
@@ -51,14 +182,15 @@ function Comment(props: { comment: CommentData }) {
           }
         })}
       </div>
-      <button
-        class="datasette-comments-add-reaction"
-        dangerouslySetInnerHTML={{ __html: ICONS.ADD_REACTION }}
-      ></button>
+      <ReactionSection
+        comment_id={comment.id}
+        initialReactions={comment.reactions}
+      />
     </div>
   );
 }
 function Draft(props: { onSubmitted: (contents: string) => void }) {
+  const { profile_photo_url } = useContext<AuthorContext>(Author);
   const [value, setValue] = useState<string>("");
   function onCancel() {
     setValue("");
@@ -71,7 +203,7 @@ function Draft(props: { onSubmitted: (contents: string) => void }) {
     <div class="datasette-comments-draft">
       <div style="display: flex;">
         <div style="padding: 4px;">
-          <img src="data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='24' height='24' fill='%23B400E1'/%3E%3Cpath d='M9.86009 16H8.75213L11.9567 7.27273H13.0476L16.2521 16H15.1442L12.5362 8.65341H12.468L9.86009 16ZM10.2692 12.5909H14.7351V13.5284H10.2692V12.5909Z' fill='white'/%3E%3C/svg%3E%0A"></img>
+          <img src={profile_photo_url} width="22px"></img>
         </div>
         <div style="width: 100%;">
           <textarea
@@ -109,6 +241,7 @@ export interface ThreadProps {
   //target: CommentTargetType;
   initialId: string | null;
   marked_resolved: boolean;
+  author: AuthorContext;
   onRefreshComments: (thread_id: string) => Promise<CommentData[]>;
   onNewThread: (contents: string) => Promise<string>;
   onSubmitComment: (thread_id: string, contents: string) => Promise<boolean>;
@@ -116,14 +249,17 @@ export interface ThreadProps {
 }
 
 export function Thread(props: ThreadProps) {
-  const [show, setShow] = useState<boolean>(true);
   const [id, setId] = useState<string | null>(props.initialId || null);
-
   const [comments, setComments] = useState<CommentData[]>([]);
+
   function refreshComments() {
     if (id === null) return;
     props.onRefreshComments(id).then((comments) => setComments([...comments]));
   }
+  useEffect(() => {
+    setId(props.initialId);
+  }, [props.initialId, setId]);
+
   useEffect(() => {
     refreshComments();
   }, [id, setComments]);
@@ -149,26 +285,28 @@ export function Thread(props: ThreadProps) {
   }
 
   return (
-    <div className="datasette-comments-thread">
-      <div className="datasette-comments-thread-meta">
-        {id !== null && (
-          <button
-            class="mark-resolved-button"
-            onClick={() => onMarkAsResolved()}
-          >
-            Mark as resolved
-          </button>
-        )}
+    <Author.Provider value={props.author}>
+      <div className="datasette-comments-thread">
+        <div className="datasette-comments-thread-meta">
+          {id !== null && (
+            <button
+              class="mark-resolved-button"
+              onClick={() => onMarkAsResolved()}
+            >
+              Mark as resolved
+            </button>
+          )}
+        </div>
+        <div className="datasette-comments-thread-comments">
+          {comments.map((comment) => (
+            <Comment comment={comment} />
+          ))}
+        </div>
+        <div>
+          <Draft onSubmitted={onNewComment} />
+        </div>
       </div>
-      <div className="datasette-comments-thread-comments">
-        {comments.map((comment) => (
-          <Comment comment={comment} />
-        ))}
-      </div>
-      <div>
-        <Draft onSubmitted={onNewComment} />
-      </div>
-    </div>
+    </Author.Provider>
   );
 }
 export { CommentData };

@@ -14,8 +14,8 @@
   border-radius: 1rem;
   margin: 0px;
   padding: 0.5rem;
-  width: 280px;
-  max-height: 400px;
+  width: 360px;
+  max-height: 100vh;
   overflow-y: auto;
 }
 
@@ -38,21 +38,6 @@
 }
 .datasette-comments-comment .mention a {
   text-decoration: none;
-}
-
-.datasette-comments-add-reaction {
-  cursor: pointer;
-  display: inline;
-  border: none;
-  padding: 0;
-  background: #dedede;
-  border-radius: 50%;
-  width: 22px;
-  height: 22px;
-}
-.datasette-comments-add-reaction svg {
-  width: 16px;
-  height: 16px;
 }
 
 /* drafts */
@@ -95,4 +80,42 @@
 
 .draft-add-button:disabled {
   background: #888;
+}
+
+/* REACTIONS */
+.datasette-comments-reactions {
+  display: flex;
+  align-items: center;
+  grid-gap: 4px;
+}
+
+.datasette-comments-reactions .popup {
+  position: absolute;
+  background: white;
+  top: -20px;
+  left: 4px;
+  color: white;
+  width: 320px;
+}
+
+.datasette-comments-reactions button {
+  cursor: pointer;
+  background: none;
+  border: 1px solid #999;
+  border-radius: 1rem;
+}
+
+.datasette-comments-add-reaction {
+  cursor: pointer;
+  display: inline;
+  border: none;
+  padding: 0;
+  background: #dedede;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+}
+.datasette-comments-add-reaction svg {
+  width: 20px;
+  height: 20px;
 }

@@ -37,10 +37,11 @@ function ThreadPopup(props: {
   target: CommentTargetType;
   initialId: string | null;
   marked_resolved: boolean;
+  actor_id: string;
+  profile_photo_url: string;
 }) {
   const { attachTo } = props;
   const [show, setShow] = useState<boolean>(true);
-  console.log("show", show);
   useEffect(() => {
     setShow(true);
     function onKeyDown(e) {
@@ -48,11 +49,25 @@ function ThreadPopup(props: {
         setShow(false);
       }
     }
+    function onClick(e) {
+      let current = e.target;
+      while (current) {
+        current = current.parentElement;
+        if (current?.classList?.contains("datasette-comments-thread-popup")) {
+          break;
+        }
+      }
+      if (!current) {
+        setShow(false);
+      }
+    }
     document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("click", onClick);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("click", onClick);
     };
-  }, [props.initialId]);
+  }, [props.initialId, props.attachTo]);
 
   async function onRefreshComments(thread_id: string): Promise<CommentData[]> {
     return Api.threadComments(thread_id).then((data) => data.data);
@@ -71,12 +86,13 @@ function ThreadPopup(props: {
   async function onMarkResolved(thread_id: string): Promise<boolean> {
     return Api.threadMarkResolved(thread_id).then(() => true);
   }
+
   const rect = attachTo.getBoundingClientRect();
   const transform = `translate(${rect.left + attachTo.offsetWidth + 10}px, ${
     rect.top
   }px`;
   return (
-    <div>
+    <div className="datasette-comments-thread-popup">
       <div
         style={{
           position: "absolute",
@@ -92,6 +108,10 @@ function ThreadPopup(props: {
             onNewThread={onNewThread}
             onSubmitComment={onSubmitComment}
             onMarkResolved={onMarkResolved}
+            author={{
+              author_actor_id: props.actor_id,
+              profile_photo_url: props.profile_photo_url,
+            }}
           />
         )}
       </div>
@@ -118,7 +138,12 @@ function tableViewExtractRowIds(): TableRow[] {
   }
   return rowids;
 }
-async function attachThreadsTableView(database: string, table: string) {
+async function attachThreadsTableView(
+  database: string,
+  table: string,
+  actor_id: string,
+  profile_photo_url: string
+) {
   const rowids = tableViewExtractRowIds();
   const response = await Api.tableViewThreads(
     database,
@@ -147,6 +172,8 @@ async function attachThreadsTableView(database: string, table: string) {
           }}
           initialId={response.data.table_threads?.[0]?.id}
           marked_resolved={false}
+          actor_id={actor_id}
+          profile_photo_url={profile_photo_url}
         />,
         THREAD_ROOT
       );
@@ -166,8 +193,6 @@ async function attachThreadsTableView(database: string, table: string) {
     span.appendChild(button);
     td.appendChild(span);
     button.addEventListener("click", () => {
-      console.log(pkEncoded);
-
       render(
         <ThreadPopup
           attachTo={td}
@@ -179,6 +204,8 @@ async function attachThreadsTableView(database: string, table: string) {
           }}
           initialId={thread_id}
           marked_resolved={false}
+          actor_id={actor_id}
+          profile_photo_url={profile_photo_url}
         />,
         THREAD_ROOT
       );
@@ -194,9 +221,9 @@ function main() {
     view_name: "index" | "database" | "table" | "row";
     database?: string;
     table?: string;
+    actor_id?: string;
+    profile_photo_url: string;
   };
-
-  console.log(CONFIG);
 
   switch (CONFIG.view_name) {
     case "index":
@@ -205,7 +232,12 @@ function main() {
       break;
     case "table":
       if (CONFIG.database && CONFIG.table)
-        attachThreadsTableView(CONFIG.database, CONFIG.table!);
+        attachThreadsTableView(
+          CONFIG.database!,
+          CONFIG.table!,
+          CONFIG.actor_id,
+          CONFIG.profile_photo_url
+        );
       break;
     case "row":
       break;

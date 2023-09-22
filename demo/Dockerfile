@@ -1,6 +1,6 @@
 FROM python:3.11-slim-bullseye
 
-RUN pip install datasette==1.0a6
+RUN pip install datasette==1.0a6 datasette-visible-internal-db
 ADD https://congress-legislators.datasettes.com/legislators.db /legislators.db
 
 COPY . /datasette-comments
