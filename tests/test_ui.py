@@ -15,23 +15,27 @@ FIXTURES_SQL = (Path(__file__).parent / "comments-fixtures.sql").read_text()
 INTERNAL_FIXTURES_SQL = (
     Path(__file__).parent / "comments-internal-fixtures.sql"
 ).read_text()
-PLUGIN_PY = """
+
+def profile_pic(fill):
+    return f"data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' fill='{fill}'/%3E%3C/svg%3E"
+
+PLUGIN_PY = f"""
 from datasette import hookimpl
 
-actors = {
-    "1": {
+actors = {{
+    "1": {{
         "id": "1",
         "username": "asg017",
         "name": "Alex Garcia",
-        "profile_picture_url": "https://avatars.githubusercontent.com/u/15178711?v=4",
-    },
-    "2": {
+        "profile_picture_url": "{profile_pic('red')}",
+    }},
+    "2": {{
         "id": "2",
         "username": "simonw",
         "name": "Simon Willison",
-        "profile_picture_url": "https://avatars.githubusercontent.com/u/9599?v=4",
-    },
-}
+        "profile_picture_url": "{profile_pic('blue')}",
+    }},
+}}
 
 
 @hookimpl
