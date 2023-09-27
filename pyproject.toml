@@ -21,7 +21,7 @@ CI = "https://github.com/datasette/datasette-comments/actions"
 comments = "datasette_comments"
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-asyncio", "playwright-pytest", "syrupy"]
+test = ["pytest", "pytest-asyncio", "pytest-playwright", "syrupy"]
 
 [tool.setuptools.packages.find]
 namespaces = false
