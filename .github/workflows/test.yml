@@ -24,6 +24,7 @@ jobs:
       with:
         path: ~/.cache/ms-playwright/
         key: ${{ runner.os }}-browsers
+    - run: playwright install
     - name: Install dependencies
       run: |
         pip install '.[test]'
