@@ -63,6 +63,7 @@ class Routes:
                 id,
                 author_actor_id,
                 created_at,
+                (strftime('%s', 'now') - strftime('%s', created_at)) as created_duration_seconds,
                 contents,
                 (
                   select json_group_array(
@@ -392,9 +393,6 @@ class Routes:
         )
         return Response.json({"ok": True})
 
-    async def debug_view(scope, receive, datasette, request):
-        return Response.html(await datasette.render_template("debug.html"))
-
     async def tag_view(scope, receive, datasette, request):
         tag = request.url_vars["tag"]
         results = await datasette.get_internal_database().execute(
@@ -409,7 +407,13 @@ class Routes:
               )
             )
             SELECT
-              *
+              thread_id,
+              target_type,
+              target_database,
+              target_table,
+              target_row_ids,
+              target_column,
+              marked_resolved
             FROM threads_with_tags
             LEFT JOIN datasette_comments_threads ON datasette_comments_threads.id = threads_with_tags.thread_id
             WHERE NOT marked_resolved
@@ -436,18 +440,23 @@ class Routes:
 @hookimpl
 def register_routes():
     return [
-        (r"^/-/datasette-comments/thread/new$", Routes.thread_new),
-        (r"^/-/datasette-comments/reaction/add$", Routes.reaction_add),
-        (r"^/-/datasette-comments/reaction/remove$", Routes.reaction_remove),
-        (r"^/-/datasette-comments/reactions/(?P<comment_id>.*)$", Routes.reactions),
+        # API thread/comment operations
+        (r"^/-/datasette-comments/api/thread/new$", Routes.thread_new),
         (
-            r"^/-/datasette-comments/thread/comments/(?P<thread_id>.*)$",
+            r"^/-/datasette-comments/api/thread/comments/(?P<thread_id>.*)$",
             Routes.thread_comments,
         ),
-        (r"^/-/datasette-comments/thread/comment/add$", Routes.comment_add),
-        (r"^/-/datasette-comments/threads/table_view$", Routes.table_view_threads),
-        (r"^/-/datasette-comments/threads/mark_resolved$", Routes.thread_mark_resolved),
-        (r"^/-/datasette-comments/debug$", Routes.debug_view),
+        (r"^/-/datasette-comments/api/thread/comment/add$", Routes.comment_add),
+        (r"^/-/datasette-comments/api/threads/table_view$", Routes.table_view_threads),
+        (
+            r"^/-/datasette-comments/api/threads/mark_resolved$",
+            Routes.thread_mark_resolved,
+        ),
+        # API reactions
+        (r"^/-/datasette-comments/api/reaction/add$", Routes.reaction_add),
+        (r"^/-/datasette-comments/api/reaction/remove$", Routes.reaction_remove),
+        (r"^/-/datasette-comments/api/reactions/(?P<comment_id>.*)$", Routes.reactions),
+        # views
         (r"^/-/datasette-comments/tags/(?P<tag>.*)$", Routes.tag_view),
     ]
 

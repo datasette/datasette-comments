@@ -26,6 +26,7 @@ export interface CommentData {
   author_name: string;
   contents: string;
   created_at: string;
+  created_duration_seconds: number;
   render_nodes: {
     node_type: "raw" | "mention" | "url" | "tag" | "linebreak";
     value: string;
@@ -40,7 +41,7 @@ export class Api {
     ok: boolean;
     thread_id: string;
   }> {
-    return api("/-/datasette-comments/thread/new", {
+    return api("/-/datasette-comments/api/thread/new", {
       method: "POST",
       data: {
         ...target,
@@ -66,7 +67,7 @@ export class Api {
       value_threads: {}[];
     };
   }> {
-    return api("/-/datasette-comments/threads/table_view", {
+    return api("/-/datasette-comments/api/threads/table_view", {
       method: "POST",
       data: {
         database,
@@ -78,7 +79,7 @@ export class Api {
   static async threadMarkResolved(thread_id: string): Promise<{
     ok: boolean;
   }> {
-    return api("/-/datasette-comments/threads/mark_resolved", {
+    return api("/-/datasette-comments/api/threads/mark_resolved", {
       method: "POST",
       data: {
         thread_id,
@@ -90,7 +91,7 @@ export class Api {
     ok: boolean;
     data: CommentData[];
   }> {
-    return api(`/-/datasette-comments/thread/comments/${thread_id}`);
+    return api(`/-/datasette-comments/api/thread/comments/${thread_id}`);
   }
   static async commentAdd(
     thread_id: string,
@@ -98,7 +99,7 @@ export class Api {
   ): Promise<{
     ok: boolean;
   }> {
-    return api(`/-/datasette-comments/thread/comment/add`, {
+    return api(`/-/datasette-comments/api/thread/comment/add`, {
       method: "POST",
       data: {
         thread_id,
@@ -112,7 +113,7 @@ export class Api {
   ): Promise<{
     ok: boolean;
   }> {
-    return api(`/-/datasette-comments/reaction/add`, {
+    return api(`/-/datasette-comments/api/reaction/add`, {
       method: "POST",
       data: {
         comment_id,
@@ -126,7 +127,7 @@ export class Api {
   ): Promise<{
     ok: boolean;
   }> {
-    return api(`/-/datasette-comments/reaction/remove`, {
+    return api(`/-/datasette-comments/api/reaction/remove`, {
       method: "POST",
       data: {
         comment_id,
@@ -140,6 +141,39 @@ export class Api {
       reaction: string;
     }[]
   > {
-    return api(`/-/datasette-comments/reactions/${comment_id}`);
+    return api(`/-/datasette-comments/api/reactions/${comment_id}`);
+  }
+}
+
+export interface State<T, E> {
+  isLoading: boolean;
+  data?: T;
+  error?: E;
+}
+export type Action<T, E> =
+  | { type: "init" }
+  | { type: "success"; data: T }
+  | { type: "failure"; error: E };
+
+export function apiReducer<
+  T,
+  E,
+  TState extends State<T, E>,
+  TAction extends Action<T, E>
+>(state: TState, action: TAction): TState {
+  switch (action.type) {
+    case "init":
+      return {
+        ...state,
+        isLoading: true,
+      };
+    case "failure":
+      return { ...state, isLoading: false, error: action.error };
+    case "success":
+      return {
+        ...state,
+        isLoading: false,
+        data: action.data,
+      };
   }
 }

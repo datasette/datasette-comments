@@ -1,7 +1,16 @@
 import { h, createContext } from "preact";
-import { useEffect, useState, useContext } from "preact/hooks";
+import { useEffect, useState, useContext, useReducer } from "preact/hooks";
 import { ICONS } from "../icons";
-import { Api, CommentData, ReactionData } from "../api";
+import {
+  Api,
+  CommentData,
+  ReactionData,
+  State,
+  Action,
+  apiReducer,
+  CommentTargetType,
+} from "../api";
+import ms from "ms";
 
 interface AuthorContext {
   author_actor_id: string;
@@ -27,7 +36,7 @@ function ReactionSection(props: {
   }
   function onClickAddReaction(e) {
     e.stopPropagation();
-    setShowReactionPopup(true);
+    setShowReactionPopup((prev) => !prev);
   }
   function onReact(reaction: string) {
     Api.reactionAdd(props.comment_id, reaction).then(() => refreshReactions());
@@ -74,6 +83,10 @@ function ReactionSection(props: {
         <div>
           <button
             key={i}
+            class={
+              "other-reactions" +
+              (reactors.indexOf(author_actor_id) >= 0 ? " viewer-reacted" : "")
+            }
             onClick={() => {
               if (
                 reactionStats
@@ -86,12 +99,6 @@ function ReactionSection(props: {
               } else {
                 onReact(reaction);
               }
-            }}
-            style={{
-              border:
-                reactors.indexOf(author_actor_id) >= 0
-                  ? "1px solid red"
-                  : "1px solid grey",
             }}
           >
             {reaction} {reactors.length}
@@ -146,7 +153,9 @@ function Comment(props: { comment: CommentData }) {
         </div>
         <div style="line-height: .9rem;">
           <strong>{comment.author_name}</strong>
-          <div style="font-size: .8rem">{comment.created_at}</div>
+          <div style="font-size: .8rem" title={comment.created_at}>
+            {ms(comment.created_duration_seconds * 1000, { long: true })} ago
+          </div>
         </div>
       </div>
 
@@ -203,9 +212,9 @@ function Draft(props: { onSubmitted: (contents: string) => void }) {
     <div class="datasette-comments-draft">
       <div style="display: flex;">
         <div style="padding: 4px;">
-          <img src={profile_photo_url} width="22px"></img>
+          <img src={profile_photo_url} width="25px"></img>
         </div>
-        <div style="width: 100%;">
+        <div style="width: 100%; display: flex;">
           <textarea
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -242,45 +251,59 @@ export interface ThreadProps {
   initialId: string | null;
   marked_resolved: boolean;
   author: AuthorContext;
-  onRefreshComments: (thread_id: string) => Promise<CommentData[]>;
-  onNewThread: (contents: string) => Promise<string>;
-  onSubmitComment: (thread_id: string, contents: string) => Promise<boolean>;
-  onMarkResolved: (thread_id: string) => Promise<boolean>;
+  target: CommentTargetType;
+  onNewThread?: (contents: string) => Promise<string>;
 }
 
 export function Thread(props: ThreadProps) {
   const [id, setId] = useState<string | null>(props.initialId || null);
-  const [comments, setComments] = useState<CommentData[]>([]);
+
+  const [comments, dispatch] = useReducer<
+    State<CommentData[], string>,
+    Action<CommentData[], string>
+  >(apiReducer, {
+    isLoading: false,
+  });
 
   function refreshComments() {
     if (id === null) return;
-    props.onRefreshComments(id).then((comments) => setComments([...comments]));
+    dispatch({ type: "init" });
+    Api.threadComments(id)
+      .then((data) => {
+        dispatch({ type: "success", data: data.data });
+      })
+      .catch((error) => {
+        dispatch({ type: "failure", error: "TODO" });
+      });
   }
+
+  // watch for prop.initialId changes
   useEffect(() => {
     setId(props.initialId);
   }, [props.initialId, setId]);
 
+  // refresh comments whenever id changes
   useEffect(() => {
     refreshComments();
-  }, [id, setComments]);
+  }, [id]);
 
   function onNewComment(contents: string) {
     if (id === null) {
-      props
-        .onNewThread(contents)
-        .then((id) => setId(id))
-        .catch(() => {});
+      Api.threadNew(props.target, contents).then(({ thread_id }) => {
+        setId(thread_id);
+        props.onNewThread(contents);
+      });
     } else {
-      props
-        .onSubmitComment(id, contents)
+      Api.commentAdd(id, contents)
         .then(() => refreshComments())
         .catch(() => {});
     }
   }
   function onMarkAsResolved() {
-    props
-      .onMarkResolved(id)
-      .then(() => {})
+    Api.threadMarkResolved(id)
+      .then(() => {
+        // TODO show message?
+      })
       .catch(() => {});
   }
 
@@ -293,14 +316,20 @@ export function Thread(props: ThreadProps) {
               class="mark-resolved-button"
               onClick={() => onMarkAsResolved()}
             >
-              Mark as resolved
+              <span
+                dangerouslySetInnerHTML={{ __html: ICONS.CHECK_CIRCLE }}
+              ></span>
             </button>
           )}
         </div>
         <div className="datasette-comments-thread-comments">
-          {comments.map((comment) => (
-            <Comment comment={comment} />
-          ))}
+          {comments.isLoading ? (
+            <div style="text-align:center; margin: 1rem;">Loading...</div>
+          ) : comments.error ? (
+            comments.error
+          ) : (
+            comments.data?.map((comment) => <Comment comment={comment} />)
+          )}
         </div>
         <div>
           <Draft onSubmitted={onNewComment} />

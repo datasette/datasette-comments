@@ -5,13 +5,39 @@ import { Api, CommentData } from "../api";
 const data = JSON.parse(
   document.getElementById("datasette-comments-data").textContent
 ) as {
-  data: any[];
+  data: {
+    thread_id: string;
+    target_type: "database" | "table" | "columns" | "row" | "value";
+    target_database: string;
+    target_table: string;
+    target_row_ids: string;
+    target_columns: string;
+    marked_resolved: string;
+  }[];
   actor_id: string;
   profile_photo_url: string;
 };
 
-async function onRefreshComments(thread_id: string): Promise<CommentData[]> {
-  return Api.threadComments(thread_id).then((data) => data.data);
+const comments_tree: Map<
+  string,
+  {
+    database_threads: string;
+    tables: Map<
+      string,
+      {
+        table_threads: string;
+        rows: Map<string, string>;
+      }
+    >;
+  }
+> = new Map();
+
+for (const row of data.data) {
+  switch (row.target_type) {
+    case "database": {
+      break;
+    }
+  }
 }
 
 function main() {
@@ -19,13 +45,26 @@ function main() {
     <div>
       {data.data.map((d) => (
         <Thread
+          target={
+            d.target_type === "database"
+              ? { type: "database", database: d.target_database }
+              : d.target_type === "table"
+              ? {
+                  type: "table",
+                  database: d.target_database,
+                  table: d.target_table,
+                }
+              : {
+                  type: "row",
+                  database: d.target_database,
+                  table: d.target_table,
+                  rowids: d.target_row_ids,
+                }
+          }
           key={d.thread_id}
           initialId={d.thread_id}
           marked_resolved={false}
-          onRefreshComments={onRefreshComments}
           onNewThread={async () => ""}
-          onSubmitComment={async () => true}
-          onMarkResolved={async () => true}
           author={{
             author_actor_id: data.actor_id,
             profile_photo_url: data.profile_photo_url,

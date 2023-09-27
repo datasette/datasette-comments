@@ -8,7 +8,7 @@ license = {text = "Apache-2.0"}
 classifiers = [
     "License :: OSI Approved :: Apache Software License"
 ]
-dependencies = ["datasette>=1.0a6", "python-ulid"]
+dependencies = ["datasette>=1.0a6", "python-ulid", "sqlite-migrate==0.1a2"]
 
 [project.urls]
 Homepage = "https://github.com/datasette/datasette-comments"
@@ -21,7 +21,7 @@ CI = "https://github.com/datasette/datasette-comments/actions"
 comments = "datasette_comments"
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-asyncio"]
+test = ["pytest", "pytest-asyncio", "playwright-pytest", "syrupy"]
 
 [tool.setuptools.packages.find]
 namespaces = false

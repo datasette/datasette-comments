@@ -32,6 +32,7 @@ function addCommentIcon(
   target.appendChild(icon);
 }
 
+// a wrapper around <Thread/> to make it appear next to elements in the page
 function ThreadPopup(props: {
   attachTo: HTMLElement;
   target: CommentTargetType;
@@ -39,9 +40,12 @@ function ThreadPopup(props: {
   marked_resolved: boolean;
   actor_id: string;
   profile_photo_url: string;
+  onNewThread: () => void;
 }) {
   const { attachTo } = props;
   const [show, setShow] = useState<boolean>(true);
+
+  // handle opening/showing thread on clicking out + escape keypress
   useEffect(() => {
     setShow(true);
     function onKeyDown(e) {
@@ -69,27 +73,26 @@ function ThreadPopup(props: {
     };
   }, [props.initialId, props.attachTo]);
 
-  async function onRefreshComments(thread_id: string): Promise<CommentData[]> {
-    return Api.threadComments(thread_id).then((data) => data.data);
-  }
-  async function onNewThread(contents: string): Promise<string> {
-    return Api.threadNew(props.target, contents).then(
-      ({ thread_id }) => thread_id
-    );
-  }
-  async function onSubmitComment(
-    thread_id: string,
-    contents: string
-  ): Promise<boolean> {
-    return Api.commentAdd(thread_id, contents).then(() => true);
-  }
-  async function onMarkResolved(thread_id: string): Promise<boolean> {
-    return Api.threadMarkResolved(thread_id).then(() => true);
+  // add border style to the target, when shown
+  useEffect(() => {
+    if (show) {
+      props.attachTo.style.border = "1px solid red";
+    } else {
+      props.attachTo.style.border = "";
+    }
+    return () => {
+      props.attachTo.style.border = "";
+    };
+  }, [props.attachTo, show]);
+
+  async function onNewThread(): Promise<string> {
+    props.onNewThread();
+    return;
   }
 
   const rect = attachTo.getBoundingClientRect();
   const transform = `translate(${rect.left + attachTo.offsetWidth + 10}px, ${
-    rect.top
+    rect.top + window.scrollY
   }px`;
   return (
     <div className="datasette-comments-thread-popup">
@@ -102,16 +105,14 @@ function ThreadPopup(props: {
       >
         {show && (
           <Thread
+            target={props.target}
             initialId={props.initialId}
             marked_resolved={props.marked_resolved}
-            onRefreshComments={onRefreshComments}
-            onNewThread={onNewThread}
-            onSubmitComment={onSubmitComment}
-            onMarkResolved={onMarkResolved}
             author={{
               author_actor_id: props.actor_id,
               profile_photo_url: props.profile_photo_url,
             }}
+            onNewThread={onNewThread}
           />
         )}
       </div>
@@ -174,6 +175,7 @@ async function attachThreadsTableView(
           marked_resolved={false}
           actor_id={actor_id}
           profile_photo_url={profile_photo_url}
+          onNewThread={() => {}}
         />,
         THREAD_ROOT
       );
@@ -186,13 +188,43 @@ async function attachThreadsTableView(
 
   for (const { td, pkEncoded } of rowids) {
     const thread_id = rowThreadLookup.get(pkEncoded) ?? null;
-
+    td.style.position = "relative";
     const span = document.createElement("span");
+    Object.assign(span.style, { position: "absolute", bottom: 0, right: 0 });
     const button = document.createElement("button");
-    button.innerText = thread_id === null ? "Comment" : "Comment +";
-    span.appendChild(button);
-    td.appendChild(span);
+    Object.assign(button.style, {
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+    });
+    // cancels the mouseenter/leave event listeners when a new thread is started
+    let cancel: () => void | null = null;
+
+    if (!thread_id) {
+      button.style.display = "none";
+
+      function mouseenter() {
+        button.style.display = "block";
+      }
+      function mouseleave() {
+        button.style.display = "none";
+      }
+      td.addEventListener("mouseenter", mouseenter);
+      td.addEventListener("mouseleave", mouseleave);
+      cancel = () => {
+        td.removeEventListener("mouseenter", mouseenter);
+        td.removeEventListener("mouseleave", mouseleave);
+      };
+    }
+
+    button.innerHTML = thread_id ? ICONS.COMMENT : ICONS.COMMENT_ADD;
+    // @ts-ignore
+    (button.querySelector("svg") as SVGElement).width = 16;
+    // @ts-ignore
+    (button.querySelector("svg") as SVGElement).height = 16;
+
     button.addEventListener("click", () => {
+      render(null, THREAD_ROOT);
       render(
         <ThreadPopup
           attachTo={td}
@@ -206,10 +238,17 @@ async function attachThreadsTableView(
           marked_resolved={false}
           actor_id={actor_id}
           profile_photo_url={profile_photo_url}
+          onNewThread={() => {
+            button.innerHTML = ICONS.COMMENT;
+            button.style.display = "block";
+            if (cancel) cancel();
+          }}
         />,
         THREAD_ROOT
       );
     });
+    span.appendChild(button);
+    td.appendChild(span);
   }
 
   /* step 4: value comments */
