@@ -8,6 +8,8 @@ from . import comment_parser
 from datasette.plugins import pm
 from ulid import ULID
 import json
+from .internal_migrations import internal_migrations
+from sqlite_utils import Database
 
 pm.add_hookspecs(hookspecs)
 
@@ -508,7 +510,11 @@ def register_routes():
 
 @hookimpl
 async def startup(datasette):
-    await datasette.get_internal_database().execute_write_script(SCHEMA)
+    def migrate(connection):
+        db = Database(connection)
+        internal_migrations.apply(db)
+
+    await datasette.get_internal_database().execute_write_fn(migrate)
 
 
 @hookimpl
