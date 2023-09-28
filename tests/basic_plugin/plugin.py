@@ -19,7 +19,6 @@ actors = {
 @hookimpl
 def actor_from_request(datasette, request):
     actor_id = request.cookies.get("actor")
-    print("actor_from_request", actor_id)
     for key in actors:
         if key == actor_id:
             return actors[key]

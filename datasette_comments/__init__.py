@@ -13,6 +13,8 @@ pm.add_hookspecs(hookspecs)
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 
+PERMISSION_ACCESS_NAME = "datasette-comments-access"
+
 
 def insert_comment(thread_id: str, author_actor_id: str, contents: str):
     id = str(ULID()).lower()
@@ -52,7 +54,27 @@ def insert_comment(thread_id: str, author_actor_id: str, contents: str):
     return (SQL, params)
 
 
+from functools import wraps
+
+
+def check_permission():
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(scope, receive, datasette, request):
+            result = await datasette.permission_allowed(
+                request.actor, PERMISSION_ACCESS_NAME, default=False
+            )
+            if not result:
+                raise Forbidden(f"Permission denied for datasette-comments")
+            return await func(scope, receive, datasette, request)
+
+        return wrapper
+
+    return decorator
+
+
 class Routes:
+    @check_permission()
     async def thread_comments(scope, receive, datasette, request):
         # TODO make sure actor can see the thread target (db, table, etc.)
         thread_id = request.url_vars["thread_id"]
@@ -98,6 +120,7 @@ class Routes:
             row["reactions"] = json.loads(row["reactions"]) if row["reactions"] else []
         return Response.json({"ok": True, "data": rows})
 
+    @check_permission()
     async def thread_mark_resolved(scope, receive, datasette, request):
         # TODO ensure only thread authors can resolve a thread?
         if request.method != "POST":
@@ -119,6 +142,7 @@ class Routes:
 
         return Response.json({"ok": True})
 
+    @check_permission()
     async def thread_new(scope, receive, datasette, request):
         if request.method != "POST":
             return Response.text("", status=405)
@@ -154,7 +178,8 @@ class Routes:
             raise Exception("TODO handle wrong type")
 
         # the urls input is a tilde-encoded string, so we split into indivudal primary keys here
-        rowids = [tilde_decode(b) for b in rowids.split(",")]
+        if rowids is not None:
+            rowids = [tilde_decode(b) for b in rowids.split(",")]
 
         id = str(ULID()).lower()
 
@@ -215,6 +240,7 @@ class Routes:
             raise e
             return Response.json({"ok": False})
 
+    @check_permission()
     async def comment_add(scope, receive, datasette, request):
         # TODO ensure actor has permission to view/comment the target
 
@@ -238,6 +264,7 @@ class Routes:
             }
         )
 
+    @check_permission()
     async def table_view_threads(scope, receive, datasette, request):
         # TODO ensure actor has permission to view the table
 
@@ -305,6 +332,7 @@ class Routes:
             }
         )
 
+    @check_permission()
     async def reactions(scope, receive, datasette, request):
         # TODO permissions
         comment_id = request.url_vars["comment_id"]
@@ -321,6 +349,7 @@ class Routes:
         )
         return Response.json([dict(row) for row in results.rows])
 
+    @check_permission()
     async def reaction_add(scope, receive, datasette, request):
         # TODO permissions
         if request.method != "POST":
@@ -362,6 +391,7 @@ class Routes:
         )
         return Response.json({"ok": True})
 
+    @check_permission()
     async def reaction_remove(scope, receive, datasette, request):
         # TODO permissions
         if request.method != "POST":
@@ -393,6 +423,7 @@ class Routes:
         )
         return Response.json({"ok": True})
 
+    @check_permission()
     async def tag_view(scope, receive, datasette, request):
         tag = request.url_vars["tag"]
         results = await datasette.get_internal_database().execute(
@@ -438,6 +469,20 @@ class Routes:
 
 
 @hookimpl
+def register_permissions(datasette):
+    return [
+        Permission(
+            name=PERMISSION_ACCESS_NAME,
+            abbr=None,
+            description="Can access datasette-comments features.",
+            takes_database=False,
+            takes_resource=False,
+            default=False,
+        )
+    ]
+
+
+@hookimpl
 def register_routes():
     return [
         # API thread/comment operations
@@ -470,14 +515,6 @@ async def startup(datasette):
 def register_permissions(datasette):
     return [
         Permission(
-            name="comments-admin",
-            abbr=None,
-            description="View the admin page for datasette-coments.",
-            takes_database=False,
-            takes_resource=False,
-            default=False,
-        ),
-        Permission(
             name="comments-create",
             abbr=None,
             description="Ability to create a short link,",
@@ -486,25 +523,6 @@ def register_permissions(datasette):
             default=False,
         ),
     ]
-
-
-@hookimpl
-def permission_allowed(actor, action):
-    pass
-
-
-@hookimpl
-def menu_links(datasette, actor):
-    async def inner():
-        if await datasette.permission_allowed(actor, "comments-admin", default=False):
-            return [
-                {
-                    "href": datasette.urls.path("/-/datasette-comments/admin"),
-                    "label": "datasette-comments Admin Page",
-                },
-            ]
-
-    return inner
 
 
 async def author_from_request(datasette, request):
@@ -528,6 +546,12 @@ async def extra_body_script(
     template, database, table, columns, view_name, request, datasette
 ):
     # TODO only include if actor can make comments
+    if not await datasette.permission_allowed(
+        request.actor, PERMISSION_ACCESS_NAME, default=False
+    ):
+        print("not allowed", request.actor)
+        return ""
+
     if view_name in SUPPORTED_VIEWS:
         actor_id, profile_photo_url = await author_from_request(datasette, request)
         meta = json.dumps(
@@ -544,15 +568,29 @@ async def extra_body_script(
 
 @hookimpl
 def extra_js_urls(template, database, table, columns, view_name, request, datasette):
-    if view_name in SUPPORTED_VIEWS:
-        return [
-            # TODO only include if actor can make comments
-            datasette.urls.path(
-                "/-/static-plugins/datasette-comments/content_script.min.js"
-            )
-        ]
+    async def inner():
+        if not await datasette.permission_allowed(
+            request.actor, PERMISSION_ACCESS_NAME, default=False
+        ):
+            return []
+        if view_name in SUPPORTED_VIEWS:
+            return [
+                # TODO only include if actor can make comments
+                datasette.urls.path(
+                    "/-/static-plugins/datasette-comments/content_script.min.js"
+                )
+            ]
+
+    return inner
 
 
 @hookimpl
 def extra_css_urls(template, database, table, columns, view_name, request, datasette):
-    return [datasette.urls.path("/-/static-plugins/datasette-comments/style.css")]
+    async def inner():
+        if not await datasette.permission_allowed(
+            request.actor, PERMISSION_ACCESS_NAME, default=False
+        ):
+            return []
+        return [datasette.urls.path("/-/static-plugins/datasette-comments/style.css")]
+
+    return inner
