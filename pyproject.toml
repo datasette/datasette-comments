@@ -1,6 +1,6 @@
 [project]
 name = "datasette-comments"
-version = "0.0.1a2"
+version = "0.0.1a3"
 description = "A Datasette plugin for commenting on tables, rows, and values"
 readme = "README.md"
 authors = [{name = "Alex Garcia"}]
