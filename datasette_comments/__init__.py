@@ -570,6 +570,7 @@ async def extra_body_script(
             }
         )
         return f"window.DATASETTE_COMMENTS_META = {meta}"
+    return ""
 
 
 @hookimpl
@@ -586,7 +587,7 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
                     "/-/static-plugins/datasette-comments/content_script.min.js"
                 )
             ]
-
+        return []
     return inner
 
 
@@ -597,6 +598,8 @@ def extra_css_urls(template, database, table, columns, view_name, request, datas
             request.actor, PERMISSION_ACCESS_NAME, default=False
         ):
             return []
-        return [datasette.urls.path("/-/static-plugins/datasette-comments/style.css")]
+        if view_name in SUPPORTED_VIEWS:
+            return [datasette.urls.path("/-/static-plugins/datasette-comments/style.css")]
+        return []
 
     return inner
