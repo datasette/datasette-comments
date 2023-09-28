@@ -534,9 +534,9 @@ def register_permissions(datasette):
 async def author_from_request(datasette, request):
     actor_id = (request.actor or {}).get("id")
     if actor_id:
+        actors = await datasette.actors_from_ids([actor_id])
         profile_photo_url = (
-            (await datasette.actors_from_ids([actor_id]))
-            .get(actor_id)
+            (actors.get(actor_id) or {})
             .get("profile_picture_url")
         )
     else:
@@ -551,11 +551,9 @@ SUPPORTED_VIEWS = ("index", "database", "table", "row")
 async def extra_body_script(
     template, database, table, columns, view_name, request, datasette
 ):
-    # TODO only include if actor can make comments
-    if not await datasette.permission_allowed(
+    if not request or not await datasette.permission_allowed(
         request.actor, PERMISSION_ACCESS_NAME, default=False
     ):
-        print("not allowed", request.actor)
         return ""
 
     if view_name in SUPPORTED_VIEWS:
@@ -576,7 +574,7 @@ async def extra_body_script(
 @hookimpl
 def extra_js_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if not await datasette.permission_allowed(
+        if not request or not await datasette.permission_allowed(
             request.actor, PERMISSION_ACCESS_NAME, default=False
         ):
             return []
@@ -594,7 +592,7 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
 @hookimpl
 def extra_css_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if not await datasette.permission_allowed(
+        if not request or not await datasette.permission_allowed(
             request.actor, PERMISSION_ACCESS_NAME, default=False
         ):
             return []
