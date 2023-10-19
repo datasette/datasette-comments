@@ -1,7 +1,7 @@
 
 {% extends "base.html" %}
 
-{% block title %}#{{tag}} Comments{% endblock %}
+{% block title %}#Comments Activity{% endblock %}
 
 {% block extra_head %}
 
@@ -10,14 +10,16 @@
   "actor_id": actor_id,
   "profile_photo_url": profile_photo_url,
 } | tojson }}</script>
-<script src="{{ urls.static_plugins("datasette_comments", "tag_view.min.js") }}"></script>
+
+<script src="{{ urls.static_plugins("datasette_comments", "activity_view.min.js") }}"></script>
 <link href="{{ urls.static_plugins("datasette_comments", "style.css") }}" rel="stylesheet" />
 
 {% endblock %}
 
 {% block content %}
 
-<h1>#{{tag}} Comments</h1>
+<h1>Recent Comments</h1>
+
 <div id="root"></div>
 
 {% endblock %}

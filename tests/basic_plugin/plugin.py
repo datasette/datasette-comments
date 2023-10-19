@@ -11,7 +11,8 @@ actors = {
         "id": "2",
         "username": "simonw",
         "name": "Simon Willison",
-        "profile_picture_url": "https://avatars.githubusercontent.com/u/9599?v=4",
+        "email": "swillison@gmail.com",
+        #"profile_picture_url": "https://avatars.githubusercontent.com/u/9599?v=4",
     },
 }
 

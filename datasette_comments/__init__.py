@@ -10,6 +10,8 @@ from ulid import ULID
 import json
 from .internal_migrations import internal_migrations
 from sqlite_utils import Database
+from functools import wraps
+import hashlib
 
 pm.add_hookspecs(hookspecs)
 
@@ -55,10 +57,7 @@ def insert_comment(thread_id: str, author_actor_id: str, contents: str):
 
     return (SQL, params)
 
-
-from functools import wraps
-
-
+# decorator for routes, to ensure the proper permissions are checked
 def check_permission():
     def decorator(func):
         @wraps(func)
@@ -468,6 +467,44 @@ class Routes:
                 },
             )
         )
+    @check_permission()
+    async def activity_view(scope, receive, datasette, request):
+        results = await datasette.get_internal_database().execute(
+            """
+              SELECT
+                comments.author_actor_id,
+                comments.contents,
+                comments.created_at,
+                threads.target_type,
+                threads.target_database,
+                threads.target_table,
+                threads.target_row_ids,
+                threads.target_column
+              FROM datasette_comments_comments AS comments
+              LEFT JOIN datasette_comments_threads AS threads ON threads.id = comments.thread_id
+              WHERE NOT threads.marked_resolved
+              ORDER BY comments.created_at DESC
+              LIMIT 100;
+        """,
+        )
+        data = [dict(row) for row in results.rows]
+        actor_id, profile_photo_url = await author_from_request(datasette, request)
+
+        actor_ids = set(row["author_actor_id"] for row in data)
+        actors = await datasette.actors_from_ids(actor_ids)
+        for row in data:
+            row["author_actor"] = actors.get(row["author_actor_id"])
+
+        return Response.html(
+            await datasette.render_template(
+                "activity_view.html",
+                {
+                    "data": data,
+                    "actor_id": actor_id,
+                    "profile_photo_url": profile_photo_url,
+                },
+            )
+        )
 
 
 @hookimpl
@@ -505,6 +542,7 @@ def register_routes():
         (r"^/-/datasette-comments/api/reactions/(?P<comment_id>.*)$", Routes.reactions),
         # views
         (r"^/-/datasette-comments/tags/(?P<tag>.*)$", Routes.tag_view),
+        (r"^/-/datasette-comments/activity$", Routes.activity_view),
     ]
 
 
@@ -531,14 +569,19 @@ def register_permissions(datasette):
     ]
 
 
+def gravtar_url(email:str):
+    hash = hashlib.sha256(email.lower().encode()).hexdigest()
+    return f"https://www.gravatar.com/avatar/{hash}"
+
 async def author_from_request(datasette, request):
+    enable_gravatar = (datasette.plugin_config("datasette-comments") or {}).get("enable_gravatar")
     actor_id = (request.actor or {}).get("id")
     if actor_id:
         actors = await datasette.actors_from_ids([actor_id])
-        profile_photo_url = (
-            (actors.get(actor_id) or {})
-            .get("profile_picture_url")
-        )
+        actor = actors.get(actor_id) or {}
+        profile_photo_url = actor.get("profile_picture_url")
+        if profile_photo_url is None and enable_gravatar and actor.get("email"):
+            profile_photo_url = gravtar_url(actor.get("email"))
     else:
         profile_photo_url = None
     return (actor_id, profile_photo_url)
