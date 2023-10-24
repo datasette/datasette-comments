@@ -1,13 +1,14 @@
 
 {% extends "base.html" %}
 
-{% block title %}#Comments Activity{% endblock %}
+{% block title %}Recent Comments{% endblock %}
 
 {% block extra_head %}
 
 <script id="datasette-comments-data" type="application/json">{{ {
   "data": data,
   "author": author,
+  "config": config,
 } | tojson }}</script>
 
 <script src="{{ urls.static_plugins("datasette_comments", "activity_view.min.js") }}"></script>

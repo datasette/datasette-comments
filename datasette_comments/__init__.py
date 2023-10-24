@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Optional
 from datasette import hookimpl, Response, Permission, Forbidden
 from datasette.utils import tilde_decode, tilde_encode
 from datasette.plugins import pm
@@ -12,6 +12,7 @@ from .internal_migrations import internal_migrations
 from sqlite_utils import Database
 from functools import wraps
 import hashlib
+from dataclasses import dataclass, asdict
 
 pm.add_hookspecs(hookspecs)
 
@@ -500,6 +501,7 @@ class Routes:
                 {
                     "data": data,
                     "author": asdict(author),
+                    "config": datasette.plugin_config("datasette-comments") or {}
                 },
             )
         )
@@ -570,9 +572,6 @@ def register_permissions(datasette):
 def gravtar_url(email:str):
     hash = hashlib.sha256(email.lower().encode()).hexdigest()
     return f"https://www.gravatar.com/avatar/{hash}"
-
-from dataclasses import dataclass, asdict
-from typing import Optional
 
 @dataclass
 class Author:
