@@ -5,7 +5,8 @@ actors = {
         "id": "1",
         "username": "asg017",
         "name": "Alex Garcia",
-        "profile_picture_url": "https://avatars.githubusercontent.com/u/15178711?v=4",
+        #"email": "alexsebastian.garcia@gmail.com"
+        #"profile_picture_url": "https://avatars.githubusercontent.com/u/15178711?v=4",
     },
     "2": {
         "id": "2",

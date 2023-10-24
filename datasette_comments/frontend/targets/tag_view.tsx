@@ -1,6 +1,6 @@
 import { h, render } from "preact";
 import { Thread, ThreadProps } from "../components/Thread";
-import { Api, CommentData } from "../api";
+import { Author } from "../api";
 
 const data = JSON.parse(
   document.getElementById("datasette-comments-data").textContent
@@ -14,8 +14,7 @@ const data = JSON.parse(
     target_columns: string;
     marked_resolved: string;
   }[];
-  actor_id: string;
-  profile_photo_url: string;
+  author: Author;
 };
 
 const comments_tree: Map<
@@ -65,10 +64,7 @@ function main() {
           initialId={d.thread_id}
           marked_resolved={false}
           onNewThread={async () => ""}
-          author={{
-            author_actor_id: data.actor_id,
-            profile_photo_url: data.profile_photo_url,
-          }}
+          author={data.author}
         />
       ))}
     </div>,

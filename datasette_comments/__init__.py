@@ -112,9 +112,8 @@ class Routes:
             rows.append(dict(row))
         actors = await datasette.actors_from_ids(list(actor_ids))
         for row in rows:
-            actor = actors.get(row["author_actor_id"])
-            row["author_profile_picture"] = actor.get("profile_picture_url")
-            row["author_name"] = actor.get("name")
+            author = author_from_actor(datasette, actors, row["author_actor_id"])
+            row["author"] = asdict(author)
 
             results = comment_parser.parse(row["contents"])
             row["render_nodes"] = results.rendered
@@ -455,14 +454,13 @@ class Routes:
             {"tag": tag},
         )
         data = [dict(row) for row in results.rows]
-        actor_id, profile_photo_url = await author_from_request(datasette, request)
+        author = await author_from_request(datasette, request)
         return Response.html(
             await datasette.render_template(
                 "tag_view.html",
                 {
                     "data": data,
-                    "actor_id": actor_id,
-                    "profile_photo_url": profile_photo_url,
+                    "author": asdict(author),
                     "tag": tag,
                 },
             )
@@ -488,7 +486,7 @@ class Routes:
         """,
         )
         data = [dict(row) for row in results.rows]
-        actor_id, profile_photo_url = await author_from_request(datasette, request)
+        author = await author_from_request(datasette, request)
 
         actor_ids = set(row["author_actor_id"] for row in data)
         actors = await datasette.actors_from_ids(actor_ids)
@@ -500,8 +498,7 @@ class Routes:
                 "activity_view.html",
                 {
                     "data": data,
-                    "actor_id": actor_id,
-                    "profile_photo_url": profile_photo_url,
+                    "author": asdict(author),
                 },
             )
         )
@@ -573,19 +570,41 @@ def gravtar_url(email:str):
     hash = hashlib.sha256(email.lower().encode()).hexdigest()
     return f"https://www.gravatar.com/avatar/{hash}"
 
-async def author_from_request(datasette, request):
-    enable_gravatar = (datasette.plugin_config("datasette-comments") or {}).get("enable_gravatar")
-    actor_id = (request.actor or {}).get("id")
-    if actor_id:
-        actors = await datasette.actors_from_ids([actor_id])
-        actor = actors.get(actor_id) or {}
-        profile_photo_url = actor.get("profile_picture_url")
-        if profile_photo_url is None and enable_gravatar and actor.get("email"):
-            profile_photo_url = gravtar_url(actor.get("email"))
-    else:
-        profile_photo_url = None
-    return (actor_id, profile_photo_url)
+from dataclasses import dataclass, asdict
+from typing import Optional
 
+@dataclass
+class Author:
+
+    # the actor.id value for the author
+    actor_id: str
+
+    # Sourced from actor object key "name"
+    name: str
+
+    # Sourced from actor object key "profile_photo_url"
+    # OR the gravatar URL from key "email", if enable_gravatar
+    # is on.
+    profile_photo_url: Optional[str]
+
+def author_from_actor(datasette, actors, actor_id) -> Author:
+    enable_gravatar = (datasette.plugin_config("datasette-comments") or {}).get("enable_gravatar")
+    actor = actors.get(actor_id)
+
+    name = actor.get("name")
+    profile_photo_url = actor.get("profile_picture_url")
+    if profile_photo_url is None and enable_gravatar and actor.get("email"):
+        profile_photo_url = gravtar_url(actor.get("email"))
+
+    return Author(actor_id, name, profile_photo_url)
+
+async def author_from_id(datasette, actor_id) -> Author:
+    actors = await datasette.actors_from_ids([actor_id])
+    return author_from_actor(datasette, actors, actor_id)
+
+
+async def author_from_request(datasette, request) -> Author:
+    return await author_from_id(datasette, (request.actor or {}).get("id"))
 
 SUPPORTED_VIEWS = ("index", "database", "table", "row")
 
@@ -600,14 +619,13 @@ async def extra_body_script(
         return ""
 
     if view_name in SUPPORTED_VIEWS:
-        actor_id, profile_photo_url = await author_from_request(datasette, request)
+        author = await author_from_request(datasette, request)
         meta = json.dumps(
             {
                 "view_name": view_name,
                 "database": database,
                 "table": table,
-                "actor_id": actor_id,
-                "profile_photo_url": profile_photo_url,
+                "author": asdict(author),
             }
         )
         return f"window.DATASETTE_COMMENTS_META = {meta}"

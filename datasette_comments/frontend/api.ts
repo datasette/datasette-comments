@@ -9,6 +9,13 @@ async function api(path: string, params?: { method?: string; data?: any }) {
   }).then((response) => response.json());
 }
 
+// map EXACTLY to the Python Author class
+export interface Author {
+  actor_id: string;
+  name: string;
+  profile_photo_url: string | null;
+}
+
 export type CommentTargetType =
   | { type: "database"; database: string }
   | { type: "table"; database: string; table: string }
@@ -21,9 +28,7 @@ export interface ReactionData {
 
 export interface CommentData {
   id: string;
-  author_actor_id: string;
-  author_profile_picture: string;
-  author_name: string;
+  author: Author;
   contents: string;
   created_at: string;
   created_duration_seconds: number;

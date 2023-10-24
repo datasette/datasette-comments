@@ -7,8 +7,7 @@
 
 <script id="datasette-comments-data" type="application/json">{{ {
   "data": data,
-  "actor_id": actor_id,
-  "profile_photo_url": profile_photo_url,
+  "author": author,
 } | tojson }}</script>
 <script src="{{ urls.static_plugins("datasette_comments", "tag_view.min.js") }}"></script>
 <link href="{{ urls.static_plugins("datasette_comments", "style.css") }}" rel="stylesheet" />

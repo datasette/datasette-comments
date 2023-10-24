@@ -14,7 +14,7 @@
 import { h, render } from "preact";
 import { ICONS } from "../icons";
 import { Thread, ThreadProps } from "../components/Thread";
-import { Api, CommentTargetType, CommentData } from "../api";
+import { Api, Author, CommentTargetType, CommentData } from "../api";
 import { useEffect, useState } from "preact/hooks";
 let THREAD_ROOT: HTMLElement;
 
@@ -38,8 +38,7 @@ function ThreadPopup(props: {
   target: CommentTargetType;
   initialId: string | null;
   marked_resolved: boolean;
-  actor_id: string;
-  profile_photo_url: string;
+  author: Author;
   onNewThread: () => void;
 }) {
   const { attachTo } = props;
@@ -108,10 +107,7 @@ function ThreadPopup(props: {
             target={props.target}
             initialId={props.initialId}
             marked_resolved={props.marked_resolved}
-            author={{
-              author_actor_id: props.actor_id,
-              profile_photo_url: props.profile_photo_url,
-            }}
+            author={props.author}
             onNewThread={onNewThread}
           />
         )}
@@ -142,8 +138,7 @@ function tableViewExtractRowIds(): TableRow[] {
 async function attachThreadsTableView(
   database: string,
   table: string,
-  actor_id: string,
-  profile_photo_url: string
+  author: Author
 ) {
   const rowids = tableViewExtractRowIds();
   const response = await Api.tableViewThreads(
@@ -173,8 +168,7 @@ async function attachThreadsTableView(
           }}
           initialId={response.data.table_threads?.[0]?.id}
           marked_resolved={false}
-          actor_id={actor_id}
-          profile_photo_url={profile_photo_url}
+          author={author}
           onNewThread={() => {}}
         />,
         THREAD_ROOT
@@ -236,8 +230,7 @@ async function attachThreadsTableView(
           }}
           initialId={thread_id}
           marked_resolved={false}
-          actor_id={actor_id}
-          profile_photo_url={profile_photo_url}
+          author={author}
           onNewThread={() => {
             button.innerHTML = ICONS.COMMENT;
             button.style.display = "block";
@@ -260,8 +253,7 @@ function main() {
     view_name: "index" | "database" | "table" | "row";
     database?: string;
     table?: string;
-    actor_id?: string;
-    profile_photo_url: string;
+    author: Author;
   };
 
   switch (CONFIG.view_name) {
@@ -271,14 +263,11 @@ function main() {
       break;
     case "table":
       if (CONFIG.database && CONFIG.table)
-        attachThreadsTableView(
-          CONFIG.database!,
-          CONFIG.table!,
-          CONFIG.actor_id,
-          CONFIG.profile_photo_url
-        );
+        attachThreadsTableView(CONFIG.database!, CONFIG.table!, CONFIG.author);
       break;
     case "row":
+      //alert("row");
+      //document.querySelector("section.content").appendChild()
       break;
   }
 }

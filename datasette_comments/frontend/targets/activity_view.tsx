@@ -1,6 +1,6 @@
 import { h, render } from "preact";
 import { Thread, ThreadProps } from "../components/Thread";
-import { Api, CommentData } from "../api";
+import { Api, Author, CommentData } from "../api";
 
 interface Datum {
   author_actor_id: string;
@@ -21,8 +21,7 @@ const data = JSON.parse(
   document.getElementById("datasette-comments-data").textContent
 ) as {
   data: Datum[];
-  actor_id: string;
-  profile_photo_url: string;
+  author: Author;
 };
 
 function renderTarget({
@@ -57,6 +56,7 @@ function main() {
       {data.data.map((d, i) => {
         const { author_actor, contents, created_at } = d;
         const isLastRead = i === 4;
+        const target = renderTarget(d);
         return (
           <div
             style={{
@@ -74,8 +74,11 @@ function main() {
                 />
                 {author_actor.name}
               </span>{" "}
-              commented on <b style="font-weight: 600;">{renderTarget(d)}</b>:{" "}
-              <i style="font-style: italic">{contents}</i>
+              commented on{" "}
+              <b style="font-weight: 600;">
+                <a href={"/" + target}>{target}</a>
+              </b>
+              : <i style="font-style: italic">{contents}</i>
             </span>
             {isLastRead && (
               <div style="position: absolute; right: 0; bottom: 0; background: red; color: white; font-size: 12px; line-height: 12px; padding: 2px 6px">
