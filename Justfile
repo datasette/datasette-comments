@@ -14,7 +14,7 @@ dev:
       --plugins-dir=tests/basic_plugin/ \
       --metadata tests/basic_plugin/metadata.yaml \
       --internal internal.db \
-      legislators.db fixtures.db
+      legislators.db fixtures.db internal.db
 
 test:
   pytest

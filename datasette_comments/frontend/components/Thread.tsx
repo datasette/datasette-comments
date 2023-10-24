@@ -246,9 +246,7 @@ function Draft(props: { onSubmitted: (contents: string) => void }) {
 }
 
 export interface ThreadProps {
-  //target: CommentTargetType;
   initialId: string | null;
-  marked_resolved: boolean;
   author: Author;
   target: CommentTargetType;
   onNewThread?: (contents: string) => Promise<string>;

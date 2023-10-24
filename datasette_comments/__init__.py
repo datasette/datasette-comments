@@ -332,6 +332,43 @@ class Routes:
                 },
             }
         )
+    @check_permission()
+    async def row_view_threads(scope, receive, datasette, request):
+        # TODO ensure actor has permission to view the row
+
+        if request.method != "POST":
+            return Response.text("POST required", status=405)
+
+        data = json.loads((await request.post_body()).decode("utf8"))
+        database = data.get("database")
+        table = data.get("table")
+        rowids_encoded: str = data.get("rowids")
+        rowids = [tilde_decode(b) for b in rowids_encoded.split(",")]
+        print(database, table, rowids, json.dumps(rowids))
+
+        response = await datasette.get_internal_database().execute(
+            """
+              select
+                id
+              from datasette_comments_threads
+              where target_type == 'row'
+                and target_database == ?1
+                and target_table == ?2
+                and target_row_ids = ?3
+                and not marked_resolved
+           """,
+            (database, table, json.dumps(rowids)),
+        )
+        row_threads = [ row["id"] for row in response.rows]
+
+        return Response.json(
+            {
+                "ok": True,
+                "data": {
+                    "row_threads": row_threads,
+                },
+            }
+        )
 
     @check_permission()
     async def reactions(scope, receive, datasette, request):
@@ -532,6 +569,7 @@ def register_routes():
         ),
         (r"^/-/datasette-comments/api/thread/comment/add$", Routes.comment_add),
         (r"^/-/datasette-comments/api/threads/table_view$", Routes.table_view_threads),
+        (r"^/-/datasette-comments/api/threads/row_view$", Routes.row_view_threads),
         (
             r"^/-/datasette-comments/api/threads/mark_resolved$",
             Routes.thread_mark_resolved,

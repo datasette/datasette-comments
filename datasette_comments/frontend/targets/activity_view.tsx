@@ -1,10 +1,6 @@
 import { h, render } from "preact";
-import {
-  DEFAULT_PROFILE_PICTURE,
-  Thread,
-  ThreadProps,
-} from "../components/Thread";
-import { Api, Author, CommentData } from "../api";
+import { DEFAULT_PROFILE_PICTURE } from "../components/Thread";
+import { Author } from "../api";
 
 interface Datum {
   author_actor_id: string;
@@ -49,45 +45,61 @@ function renderTarget({
   }
 }
 
+function CommentRow(props: { data: Datum; isLastRead: boolean }) {
+  const { author, contents, created_at } = props.data;
+  const target = renderTarget(props.data);
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderBottom: props.isLastRead ? "1px solid red" : null,
+      }}
+    >
+      <span>
+        <span style="font-family: monospace;">{created_at}</span>:{" "}
+        <span style="font-weight:600;">
+          <img
+            src={author.profile_photo_url || DEFAULT_PROFILE_PICTURE}
+            width="14px"
+            style="border-radius: 50%; margin-right: 2px;"
+          />
+          {author.name}
+        </span>{" "}
+        commented on{" "}
+        <b style="font-weight: 600;">
+          <a href={"/" + target}>{target}</a>
+        </b>
+        : <i style="font-style: italic">{contents}</i>
+      </span>
+      {props.isLastRead && (
+        <div style="position: absolute; right: 0; bottom: 0; background: red; color: white; font-size: 12px; line-height: 12px; padding: 2px 6px">
+          ⌃New
+        </div>
+      )}
+    </div>
+  );
+}
+
 function main() {
-  console.log(data.data[0]);
+  const lastSeen: string | null = localStorage.getItem(
+    "datasette-comments-last-seen"
+  );
+  const idxLastSeen =
+    lastSeen === null
+      ? null
+      : data.data.findIndex(
+          (d, i) =>
+            i < data.data.length - 1 &&
+            d.created_at > lastSeen &&
+            data.data[i + 1].created_at <= lastSeen
+        );
+  localStorage.setItem("datasette-comments-last-seen", data.data[0].created_at);
+
   render(
     <div>
-      {data.data.map((d, i) => {
-        const { author, contents, created_at } = d;
-        const isLastRead = i === 4;
-        const target = renderTarget(d);
-        return (
-          <div
-            style={{
-              position: "relative",
-              borderBottom: isLastRead ? "1px solid red" : null,
-            }}
-          >
-            <span>
-              <span style="font-family: monospace;">{created_at}</span>:{" "}
-              <span style="font-weight:600;">
-                <img
-                  src={author.profile_photo_url || DEFAULT_PROFILE_PICTURE}
-                  width="14px"
-                  style="border-radius: 50%; margin-right: 2px;"
-                />
-                {author.name}
-              </span>{" "}
-              commented on{" "}
-              <b style="font-weight: 600;">
-                <a href={"/" + target}>{target}</a>
-              </b>
-              : <i style="font-style: italic">{contents}</i>
-            </span>
-            {isLastRead && (
-              <div style="position: absolute; right: 0; bottom: 0; background: red; color: white; font-size: 12px; line-height: 12px; padding: 2px 6px">
-                ⌃New
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {data.data.map((data, i) => (
+        <CommentRow data={data} isLastRead={i === idxLastSeen} />
+      ))}
     </div>,
     document.querySelector("#root")
   );

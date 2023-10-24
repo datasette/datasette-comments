@@ -106,7 +106,6 @@ function ThreadPopup(props: {
           <Thread
             target={props.target}
             initialId={props.initialId}
-            marked_resolved={props.marked_resolved}
             author={props.author}
             onNewThread={onNewThread}
           />
@@ -135,7 +134,27 @@ function tableViewExtractRowIds(): TableRow[] {
   }
   return rowids;
 }
-async function attachThreadsTableView(
+
+async function attachRowView(database: string, table: string, author: Author) {
+  const rowids = window.location.pathname.split("/").pop();
+  const threads = await Api.rowViewThreads(database, table, rowids);
+  const target = document
+    .querySelector("section.content")
+    .appendChild(document.createElement("div"));
+  render(
+    <div>
+      {threads.data.row_threads.map((d) => (
+        <Thread
+          initialId={d}
+          author={author}
+          target={{ type: "row", database, table, rowids }}
+        />
+      ))}
+    </div>,
+    target
+  );
+}
+async function attachTableView(
   database: string,
   table: string,
   author: Author
@@ -263,11 +282,10 @@ function main() {
       break;
     case "table":
       if (CONFIG.database && CONFIG.table)
-        attachThreadsTableView(CONFIG.database!, CONFIG.table!, CONFIG.author);
+        attachTableView(CONFIG.database!, CONFIG.table!, CONFIG.author);
       break;
     case "row":
-      //alert("row");
-      //document.querySelector("section.content").appendChild()
+      attachRowView(CONFIG.database!, CONFIG.table!, CONFIG.author);
       break;
   }
 }

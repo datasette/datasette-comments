@@ -81,6 +81,25 @@ export class Api {
       },
     });
   }
+  static async rowViewThreads(
+    database: string,
+    table: string,
+    rowids: string
+  ): Promise<{
+    ok: boolean;
+    data: {
+      row_threads: string[];
+    };
+  }> {
+    return api("/-/datasette-comments/api/threads/row_view", {
+      method: "POST",
+      data: {
+        database,
+        table,
+        rowids,
+      },
+    });
+  }
   static async threadMarkResolved(thread_id: string): Promise<{
     ok: boolean;
   }> {
