@@ -538,7 +538,6 @@ class Routes:
                 {
                     "data": data,
                     "author": asdict(author),
-                    "config": datasette.plugin_config("datasette-comments") or {}
                 },
             )
         )

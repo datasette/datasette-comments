@@ -288,7 +288,7 @@ export function Thread(props: ThreadProps) {
     if (id === null) {
       Api.threadNew(props.target, contents).then(({ thread_id }) => {
         setId(thread_id);
-        props.onNewThread(contents);
+        if (props.onNewThread) props.onNewThread(contents);
       });
     } else {
       Api.commentAdd(id, contents)
