@@ -1,14 +1,14 @@
 import { h, render } from "preact";
-import { Thread, ThreadProps } from "../components/Thread";
+import {
+  DEFAULT_PROFILE_PICTURE,
+  Thread,
+  ThreadProps,
+} from "../components/Thread";
 import { Api, Author, CommentData } from "../api";
 
 interface Datum {
   author_actor_id: string;
-  author_actor: {
-    id: string;
-    name: string;
-    profile_picture_url: string;
-  };
+  author: Author;
   contents: string;
   created_at: string;
   target_type: "database" | "table" | "columns" | "row" | "value";
@@ -54,7 +54,7 @@ function main() {
   render(
     <div>
       {data.data.map((d, i) => {
-        const { author_actor, contents, created_at } = d;
+        const { author, contents, created_at } = d;
         const isLastRead = i === 4;
         const target = renderTarget(d);
         return (
@@ -68,11 +68,11 @@ function main() {
               <span style="font-family: monospace;">{created_at}</span>:{" "}
               <span style="font-weight:600;">
                 <img
-                  src={author_actor.profile_picture_url}
+                  src={author.profile_photo_url || DEFAULT_PROFILE_PICTURE}
                   width="14px"
                   style="border-radius: 50%; margin-right: 2px;"
                 />
-                {author_actor.name}
+                {author.name}
               </span>{" "}
               commented on{" "}
               <b style="font-weight: 600;">

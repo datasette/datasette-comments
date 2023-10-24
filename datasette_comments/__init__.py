@@ -491,7 +491,8 @@ class Routes:
         actor_ids = set(row["author_actor_id"] for row in data)
         actors = await datasette.actors_from_ids(actor_ids)
         for row in data:
-            row["author_actor"] = actors.get(row["author_actor_id"])
+            author = author_from_actor(datasette, actors, row["author_actor_id"])
+            row["author"] = asdict(author)
 
         return Response.html(
             await datasette.render_template(
@@ -590,6 +591,9 @@ class Author:
 def author_from_actor(datasette, actors, actor_id) -> Author:
     enable_gravatar = (datasette.plugin_config("datasette-comments") or {}).get("enable_gravatar")
     actor = actors.get(actor_id)
+
+    if actor is None:
+        return Author(actor_id, "", None)
 
     name = actor.get("name")
     profile_photo_url = actor.get("profile_picture_url")

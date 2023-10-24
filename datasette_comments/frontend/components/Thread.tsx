@@ -13,7 +13,7 @@ import {
 } from "../api";
 import ms from "ms";
 
-const DEFAULT_PROFILE_PICTURE =
+export const DEFAULT_PROFILE_PICTURE =
   "data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cmask id='mask0_136_16' style='mask-type:alpha' maskUnits='userSpaceOnUse' x='0' y='0' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23D9D9D9'/%3E%3C/mask%3E%3Cg mask='url(%23mask0_136_16)'%3E%3Crect width='32' height='32' fill='%23D9D9D9'/%3E%3Ccircle cx='16' cy='13' r='7' fill='%236D6D6D'/%3E%3Ccircle cx='16' cy='13' r='7' fill='%236D6D6D'/%3E%3Ccircle cx='16' cy='13' r='7' fill='%236D6D6D'/%3E%3Ccircle cx='16' cy='13' r='7' fill='%236D6D6D'/%3E%3Cpath d='M30 32.5C23.25 32.5 23.9558 32.5 16.5 32.5C9.04416 32.5 9.75 32.5 3 32.5C3 25.0442 9.04416 19 16.5 19C23.9558 19 30 25.0442 30 32.5Z' fill='%236D6D6D'/%3E%3Cpath d='M30 32.5C23.25 32.5 23.9558 32.5 16.5 32.5C9.04416 32.5 9.75 32.5 3 32.5C3 25.0442 9.04416 19 16.5 19C23.9558 19 30 25.0442 30 32.5Z' fill='%236D6D6D'/%3E%3Cpath d='M30 32.5C23.25 32.5 23.9558 32.5 16.5 32.5C9.04416 32.5 9.75 32.5 3 32.5C3 25.0442 9.04416 19 16.5 19C23.9558 19 30 25.0442 30 32.5Z' fill='%236D6D6D'/%3E%3Cpath d='M30 32.5C23.25 32.5 23.9558 32.5 16.5 32.5C9.04416 32.5 9.75 32.5 3 32.5C3 25.0442 9.04416 19 16.5 19C23.9558 19 30 25.0442 30 32.5Z' fill='%236D6D6D'/%3E%3C/g%3E%3C/svg%3E%0A";
 const AuthorContext = createContext<Author>({
   actor_id: "",
