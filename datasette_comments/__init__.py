@@ -501,6 +501,7 @@ class Routes:
                     "author": asdict(author),
                     "tag": tag,
                 },
+                request=request,
             )
         )
     @check_permission()
@@ -539,6 +540,7 @@ class Routes:
                     "data": data,
                     "author": asdict(author),
                 },
+                request=request,
             )
         )
 
