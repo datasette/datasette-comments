@@ -1,11 +1,10 @@
-from typing import Any, List, Optional
+from typing import List, Optional
 from datasette import hookimpl, Response, Permission, Forbidden
 from datasette.utils import tilde_decode, tilde_encode
 from datasette.plugins import pm
 from pathlib import Path
 from . import hookspecs
 from . import comment_parser
-from datasette.plugins import pm
 from ulid import ULID
 import json
 from .internal_migrations import internal_migrations
@@ -58,6 +57,7 @@ def insert_comment(thread_id: str, author_actor_id: str, contents: str):
 
     return (SQL, params)
 
+
 # decorator for routes, to ensure the proper permissions are checked
 def check_permission():
     def decorator(func):
@@ -67,7 +67,7 @@ def check_permission():
                 request.actor, PERMISSION_ACCESS_NAME, default=False
             )
             if not result:
-                raise Forbidden(f"Permission denied for datasette-comments")
+                raise Forbidden("Permission denied for datasette-comments")
             return await func(scope, receive, datasette, request)
 
         return wrapper
@@ -161,22 +161,43 @@ class Routes:
         # validate the target is good, depending on type
         if type == "database":
             if database is None:
-                return Response.json({"message": "TODO"}, status=400)
+                return Response.json(
+                    {"message": "target type database requires 'database' field"},
+                    status=400,
+                )
         elif type == "table":
             if any(item is None for item in (database, table)):
-                return Response.json({"message": "TODO"}, status=400)
-        elif type == "column":
-            if any(item is None for item in (database, table, column)):
-                return Response.json({"message": "TODO"}, status=400)
-            raise Exception("TODO")
+                return Response.json(
+                    {
+                        "message": "target type table requires 'database' and 'table' fields"
+                    },
+                    status=400,
+                )
         elif type == "row":
             if any(item is None for item in (database, table, rowids)):
-                return Response.json({"message": "TODO"}, status=400)
+                return Response.json(
+                    {
+                        "message": "target type database requires 'database', 'table', and 'rowids' fields"
+                    },
+                    status=400,
+                )
+        elif type == "column":
+            if any(item is None for item in (database, table, column)):
+                return Response.json(
+                    {
+                        "message": "target type column requires 'database', 'table', and 'column' fields"
+                    },
+                    status=400,
+                )
+            raise Exception("TODO column type not implmented")
         elif type == "value":
             if any(item is None for item in (database, table, column, rowids)):
-                raise Exception("TODO")
+                raise Exception(
+                    "target type value requires 'database', 'table', 'column', and 'rowids' fields"
+                )
+            raise Exception("TODO value type not implmented")
         else:
-            raise Exception("TODO handle wrong type")
+            raise Exception(f"target type '{type}' not supported")
 
         # the urls input is a tilde-encoded string, so we split into indivudal primary keys here
         if rowids is not None:
@@ -332,6 +353,7 @@ class Routes:
                 },
             }
         )
+
     @check_permission()
     async def row_view_threads(scope, receive, datasette, request):
         # TODO ensure actor has permission to view the row
@@ -359,7 +381,7 @@ class Routes:
            """,
             (database, table, json.dumps(rowids)),
         )
-        row_threads = [ row["id"] for row in response.rows]
+        row_threads = [row["id"] for row in response.rows]
 
         return Response.json(
             {
@@ -504,6 +526,7 @@ class Routes:
                 request=request,
             )
         )
+
     @check_permission()
     async def activity_view(scope, receive, datasette, request):
         results = await datasette.get_internal_database().execute(
@@ -594,27 +617,13 @@ async def startup(datasette):
     await datasette.get_internal_database().execute_write_fn(migrate)
 
 
-@hookimpl
-def register_permissions(datasette):
-    return [
-        Permission(
-            name="comments-create",
-            abbr=None,
-            description="Ability to create a short link,",
-            takes_database=False,
-            takes_resource=False,
-            default=False,
-        ),
-    ]
-
-
-def gravtar_url(email:str):
+def gravtar_url(email: str):
     hash = hashlib.sha256(email.lower().encode()).hexdigest()
     return f"https://www.gravatar.com/avatar/{hash}"
 
+
 @dataclass
 class Author:
-
     # the actor.id value for the author
     actor_id: str
 
@@ -626,8 +635,11 @@ class Author:
     # is on.
     profile_photo_url: Optional[str]
 
+
 def author_from_actor(datasette, actors, actor_id) -> Author:
-    enable_gravatar = (datasette.plugin_config("datasette-comments") or {}).get("enable_gravatar")
+    enable_gravatar = (datasette.plugin_config("datasette-comments") or {}).get(
+        "enable_gravatar"
+    )
     actor = actors.get(actor_id)
 
     if actor is None:
@@ -640,6 +652,7 @@ def author_from_actor(datasette, actors, actor_id) -> Author:
 
     return Author(actor_id, name, profile_photo_url)
 
+
 async def author_from_id(datasette, actor_id) -> Author:
     actors = await datasette.actors_from_ids([actor_id])
     return author_from_actor(datasette, actors, actor_id)
@@ -647,6 +660,7 @@ async def author_from_id(datasette, actor_id) -> Author:
 
 async def author_from_request(datasette, request) -> Author:
     return await author_from_id(datasette, (request.actor or {}).get("id"))
+
 
 SUPPORTED_VIEWS = ("index", "database", "table", "row")
 
@@ -689,6 +703,7 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
                 )
             ]
         return []
+
     return inner
 
 
@@ -700,7 +715,9 @@ def extra_css_urls(template, database, table, columns, view_name, request, datas
         ):
             return []
         if view_name in SUPPORTED_VIEWS:
-            return [datasette.urls.path("/-/static-plugins/datasette-comments/style.css")]
+            return [
+                datasette.urls.path("/-/static-plugins/datasette-comments/style.css")
+            ]
         return []
 
     return inner
