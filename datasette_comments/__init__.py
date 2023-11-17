@@ -665,7 +665,11 @@ async def get_label_column(datasette, db: str, table: str):
 
 # Based on https://github.com/simonw/datasette/blob/452a587e236ef642cbc6ae345b58767ea8420cb5/datasette/utils/__init__.py#L1209
 async def get_label_for_row(db, table: str, label_column: str, rowids: List[str]):
+    if len(rowids) == 0:
+        return None
     pks = await db.primary_keys(table)
+    if len(pks) == 0:
+        return None
     wheres = [f'"{pk}"=:p{i}' for i, pk in enumerate(pks)]
     sql = f"select [{label_column}] from [{table}] where {' AND '.join(wheres)} limit 1"
     params = {}
@@ -827,7 +831,7 @@ async def should_inject_content_script(datasette, request, view_name):
     if not request or not await datasette.permission_allowed(
         request.actor, PERMISSION_ACCESS_NAME, default=False
     ):
-        return []
+        return False
     return view_name in SUPPORTED_VIEWS
 
 
