@@ -1,0 +1,54 @@
+.datasette-comments-activity-view {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-top: 2rem;
+
+  & .header {
+    display: flex;
+    justify-content: space-between;
+
+    & .filter {
+      border: none;
+      background: none;
+      fill: #555;
+      cursor: pointer;
+
+      &:hover {
+        fill: #000;
+      }
+    }
+  }
+
+  & .activity-search {
+    max-width: 600px;
+    background: white;
+    margin: 0 auto;
+    border: #aaa solid 1px;
+    border-radius: 0.25rem;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+
+    & input[type="text"] {
+      width: calc(100% - 0.5rem);
+    }
+
+    & .activity-search-field {
+      display: grid;
+      grid-template-columns: 160px auto;
+      margin-bottom: 1rem;
+      & label {
+        font-weight: 700;
+      }
+    }
+
+    & .help {
+      font-style: italic;
+      text-align: right;
+    }
+
+    & .activity-search-footer {
+      display: flex;
+      justify-content: space-between;
+    }
+  }
+}

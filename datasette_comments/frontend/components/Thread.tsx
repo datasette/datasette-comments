@@ -1,5 +1,12 @@
+import "./Thread.css";
 import { h, createContext } from "preact";
-import { useEffect, useState, useContext, useReducer } from "preact/hooks";
+import {
+  useEffect,
+  useState,
+  useContext,
+  useReducer,
+  useRef,
+} from "preact/hooks";
 import { ICONS } from "../icons";
 import {
   Api,
@@ -11,7 +18,7 @@ import {
   CommentTargetType,
   Author,
 } from "../api";
-import ms from "ms";
+import { Duration } from "./Duration";
 
 export const DEFAULT_PROFILE_PICTURE =
   "data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cmask id='mask0_136_16' style='mask-type:alpha' maskUnits='userSpaceOnUse' x='0' y='0' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23D9D9D9'/%3E%3C/mask%3E%3Cg mask='url(%23mask0_136_16)'%3E%3Crect width='32' height='32' fill='%23D9D9D9'/%3E%3Ccircle cx='16' cy='13' r='7' fill='%236D6D6D'/%3E%3Ccircle cx='16' cy='13' r='7' fill='%236D6D6D'/%3E%3Ccircle cx='16' cy='13' r='7' fill='%236D6D6D'/%3E%3Ccircle cx='16' cy='13' r='7' fill='%236D6D6D'/%3E%3Cpath d='M30 32.5C23.25 32.5 23.9558 32.5 16.5 32.5C9.04416 32.5 9.75 32.5 3 32.5C3 25.0442 9.04416 19 16.5 19C23.9558 19 30 25.0442 30 32.5Z' fill='%236D6D6D'/%3E%3Cpath d='M30 32.5C23.25 32.5 23.9558 32.5 16.5 32.5C9.04416 32.5 9.75 32.5 3 32.5C3 25.0442 9.04416 19 16.5 19C23.9558 19 30 25.0442 30 32.5Z' fill='%236D6D6D'/%3E%3Cpath d='M30 32.5C23.25 32.5 23.9558 32.5 16.5 32.5C9.04416 32.5 9.75 32.5 3 32.5C3 25.0442 9.04416 19 16.5 19C23.9558 19 30 25.0442 30 32.5Z' fill='%236D6D6D'/%3E%3Cpath d='M30 32.5C23.25 32.5 23.9558 32.5 16.5 32.5C9.04416 32.5 9.75 32.5 3 32.5C3 25.0442 9.04416 19 16.5 19C23.9558 19 30 25.0442 30 32.5Z' fill='%236D6D6D'/%3E%3C/g%3E%3C/svg%3E%0A";
@@ -19,6 +26,7 @@ const AuthorContext = createContext<Author>({
   actor_id: "",
   name: "",
   profile_photo_url: "",
+  username: null,
 });
 
 function ReactionSection(props: {
@@ -149,8 +157,11 @@ function Comment(props: { comment: CommentData }) {
         </div>
         <div style="line-height: .9rem;">
           <strong>{comment.author.name}</strong>
-          <div style="font-size: .8rem" title={comment.created_at}>
-            {ms(comment.created_duration_seconds * 1000, { long: true })} ago
+          <div>
+            <Duration
+              duration_ms={comment.created_duration_seconds * 1000}
+              timestamp={comment.created_at}
+            />
           </div>
         </div>
       </div>
@@ -165,7 +176,13 @@ function Comment(props: { comment: CommentData }) {
             case "mention":
               return (
                 <span class="mention">
-                  <a href={"#TODO"}>{node.value}</a>
+                  <a
+                    href={`/-/datasette-comments/activity?author=${node.value.slice(
+                      1
+                    )}`}
+                  >
+                    {node.value}
+                  </a>
                 </span>
               );
             case "tag":
@@ -194,9 +211,46 @@ function Comment(props: { comment: CommentData }) {
     </div>
   );
 }
+function autocompleteOptions(
+  textarea: HTMLTextAreaElement
+): { type: "tag" | "mention"; prefix: string } | null {
+  const { value, selectionStart, selectionEnd } = textarea;
+  const cursorIdx = selectionStart;
+
+  for (let i = cursorIdx - 1; i >= 0; i--) {
+    if (value[i] === " ") return;
+    if (value[i] === "#") {
+      return { type: "tag", prefix: value.substring(i + 1, cursorIdx) };
+    }
+    if (value[i] === "@") {
+      return { type: "mention", prefix: value.substring(i + 1, cursorIdx) };
+    }
+  }
+}
+
+function MentionSuggestion(props: {
+  author: Author;
+  onSelect: (author: Author) => void;
+}) {
+  return (
+    <div
+      onClick={() => props.onSelect(props.author)}
+      className="mention-suggestion"
+    >
+      <img
+        style="width: 1rem; height: 1rem;"
+        src={props.author.profile_photo_url ?? DEFAULT_PROFILE_PICTURE}
+      />
+      <span style="font-weight: 600;">{props.author.name}</span>
+      <span>({props.author.username})</span>
+    </div>
+  );
+}
 function Draft(props: { onSubmitted: (contents: string) => void }) {
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const { profile_photo_url } = useContext<Author>(AuthorContext);
   const [value, setValue] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<Author[]>([]);
   function onCancel() {
     setValue("");
   }
@@ -213,18 +267,67 @@ function Draft(props: { onSubmitted: (contents: string) => void }) {
             width="25px"
           ></img>
         </div>
-        <div style="width: 100%; display: flex;">
-          <textarea
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              setValue(target.value);
+        <div style="width: 100%">
+          <div>
+            <textarea
+              ref={inputRef}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                setValue(target.value);
 
-              // resize textarea on new lines
-              target.style.height = "";
-              target.style.height = target.scrollHeight + "px";
-            }}
-            value={value}
-          ></textarea>
+                // resize textarea on new lines
+                target.style.height = "";
+                target.style.height = target.scrollHeight + "px";
+
+                const x = autocompleteOptions(target);
+                if (x) {
+                  if (x.type === "mention") {
+                    Api.autocomplete_mentions(x.prefix).then((data) => {
+                      setSuggestions(data.suggestions.map((d) => d.author));
+                    });
+                  }
+                } else {
+                  setSuggestions([]);
+                }
+              }}
+              value={value}
+              style="width: calc(100% - 1rem)"
+            ></textarea>
+          </div>
+          <div>
+            {suggestions.map((suggestion) => (
+              <MentionSuggestion
+                author={suggestion}
+                onSelect={(author) => {
+                  const { selectionEnd, value } = inputRef.current;
+                  let mentionStartIdx;
+                  for (let i = selectionEnd; i >= 0; i--) {
+                    if (value[i] === "@") {
+                      mentionStartIdx = i;
+                    } else if (value[i] === " ") {
+                      break;
+                    }
+                  }
+                  if (mentionStartIdx === undefined) {
+                    return;
+                  }
+                  const newValue = `${value.substring(0, mentionStartIdx)}@${
+                    author.username
+                  } ${value.substring(selectionEnd)}`;
+
+                  setValue(newValue);
+                  inputRef.current.value = newValue;
+                  inputRef.current.selectionEnd =
+                    mentionStartIdx +
+                    "@".length +
+                    author.username.length +
+                    " ".length;
+                  inputRef.current.focus();
+                  setSuggestions([]);
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
       <div class="draft-bottom-drawer">
@@ -297,11 +400,16 @@ export function Thread(props: ThreadProps) {
     }
   }
   function onMarkAsResolved() {
-    Api.threadMarkResolved(id)
-      .then(() => {
-        // TODO show message?
-      })
-      .catch(() => {});
+    const confirmed = window.confirm(
+      "Are you sure you want to mark this thread resolved? You can still access resolved thread on the Comments page."
+    );
+    if (confirmed) {
+      Api.threadMarkResolved(id)
+        .then(() => {
+          // TODO show message?
+        })
+        .catch(() => {});
+    }
   }
 
   return (

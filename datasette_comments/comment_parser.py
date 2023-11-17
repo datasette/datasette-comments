@@ -7,7 +7,7 @@ def valid_url(s):
     try:
         result = urlparse(s)
         return all([result.scheme, result.netloc])
-    except:
+    except Exception:
         return False
 
 

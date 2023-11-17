@@ -1,13 +1,18 @@
 /**
  * This "content script" is JavaScript that gets executing on every Datasette
- * page for each client. It's important that the code-size of this script
- * remains minimal and resources are used sparringly (memory, network requests,
- * etc.).
+ * page for each client. The main goal of this content script is to ensure
+ * targets with unresolved threads/comments are shown to users that have
+ * permission to see it.
  *
- * The main goal of this content script is to ensure targets with unresolved
- * threads/comments are shown to users that have permission to see it.
+ * Supported targets:
+ * 1. Row View `/db/table/rowids`
+ * 2. Table View `/db/table`
  *
- * The JavaScript for other datasette-comments targets (admin pages, etc)
+ *
+ *
+ * It's important that the code-size of this script remains minimal and
+ * resources are used sparringly (memory, network requests, etc.). The
+ * JavaScript for other datasette-comments targets (admin pages, etc)
  * exist in different files.
  *
  */
@@ -312,8 +317,10 @@ function main() {
 
   switch (CONFIG.view_name) {
     case "index":
+      // TODO supported index page comments
       break;
     case "database":
+      // TODO support database page comments
       break;
     case "table":
       if (CONFIG.database && CONFIG.table)

@@ -14,6 +14,7 @@ export interface Author {
   actor_id: string;
   name: string;
   profile_photo_url: string | null;
+  username: string | null;
 }
 
 export type CommentTargetType =
@@ -38,6 +39,29 @@ export interface CommentData {
   }[];
   reactions: ReactionData[];
 }
+
+export interface ActivitySearchParams {
+  searchComments: string | null;
+  containsTags: string[] | null;
+  isResolved: boolean;
+  author: string | null;
+  database: string | null;
+  table: string | null;
+}
+export interface ActivtySearchResult {
+  author_actor_id: string;
+  author: Author;
+  contents: string;
+  created_at: string;
+  created_duration_seconds: number;
+  target_type: "database" | "table" | "columns" | "row" | "value";
+  target_database: string;
+  target_table: string | null;
+  target_row_ids: string | null;
+  target_columns: string | null;
+  target_label: string | null;
+}
+
 export class Api {
   static async threadNew(
     target: CommentTargetType,
@@ -166,6 +190,34 @@ export class Api {
     }[]
   > {
     return api(`/-/datasette-comments/api/reactions/${comment_id}`);
+  }
+  static async autocomplete_mentions(prefix: string): Promise<{
+    suggestions: {
+      username: string;
+      author: Author;
+    }[];
+  }> {
+    return api(
+      `/-/datasette-comments/api/autocomplete/mentions?prefix=${encodeURIComponent(
+        prefix
+      )}`
+    );
+  }
+
+  static async activitySearch(params: ActivitySearchParams): Promise<{
+    data: ActivtySearchResult[];
+  }> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("searchComments", params.searchComments);
+    params.containsTags.forEach((tag) =>
+      searchParams.append("containsTag", tag)
+    );
+    searchParams.set("isResolved", params.isResolved ? "1" : "0");
+    if (params.author) searchParams.set("author", params.author);
+    if (params.database) searchParams.set("database", params.database);
+    if (params.table) searchParams.set("table", params.table);
+
+    return api(`/-/datasette-comments/api/activity_search?${searchParams}`);
   }
 }
 

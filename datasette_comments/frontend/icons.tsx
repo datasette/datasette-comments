@@ -11,4 +11,7 @@ export const ICONS = {
 
   // https://fonts.google.com/icons?selected=Material+Symbols+Outlined:chat_bubble:FILL@0;wght@400;GRAD@0;opsz@24&icon.query=chat
   COMMENT: `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24"><path d="M80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240L80-80Zm126-240h594v-480H160v525l46-45Zm-46 0v-480 480Z"/></svg>`,
+
+  // https://fonts.google.com/icons?selected=Material%20Symbols%20Outlined%3Atune%3AFILL%400%3Bwght%40400%3BGRAD%400%3Bopsz%4024
+  TUNE: `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24"><path d="M440-120v-240h80v80h320v80H520v80h-80Zm-320-80v-80h240v80H120Zm160-160v-80H120v-80h160v-80h80v240h-80Zm160-80v-80h400v80H440Zm160-160v-240h80v80h160v80H680v80h-80Zm-480-80v-80h400v80H120Z"/></svg>`,
 };

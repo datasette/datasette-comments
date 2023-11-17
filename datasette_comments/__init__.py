@@ -123,10 +123,10 @@ class Routes:
 
     @check_permission()
     async def thread_mark_resolved(scope, receive, datasette, request):
-        # TODO ensure only thread authors can resolve a thread?
         if request.method != "POST":
             return Response.text("", status=405)
 
+        # TODO ensure only thread authors can resolve a thread?
         actor_id = request.actor.get("id")
 
         data = json.loads((await request.post_body()).decode("utf8"))
@@ -529,12 +529,78 @@ class Routes:
 
     @check_permission()
     async def activity_view(scope, receive, datasette, request):
-        results = await datasette.get_internal_database().execute(
-            """
+        return Response.html(
+            await datasette.render_template(
+                "activity_view.html",
+                request=request,
+            )
+        )
+
+    @check_permission()
+    async def autocomplete_mentions(scope, receive, datasette, request):
+        prefix = request.args.get("prefix")
+        suggestions = []
+        for users in pm.hook.datasette_comments_users():
+            for user in users:
+                username = user.get("username")
+                if username and username.startswith(prefix):
+                    suggestions.append(
+                        {
+                            "username": user.get("username"),
+                            "author": asdict(
+                                await author_from_id(datasette, user.get("id"))
+                            ),
+                        }
+                    )
+        return Response.json({"suggestions": suggestions})
+
+    @check_permission()
+    async def activity_search(scope, receive, datasette, request):
+        search_comments = request.args.get("searchComments")
+        author = request.args.get("author")
+        database = request.args.get("database")
+        table = request.args.get("table")
+        is_resolved = request.args.get("isResolved") == "1"
+        contains_tag = request.args.getlist("containsTag")
+
+        WHERE = "1"
+        params = []
+
+        # when provided, searchComments adds a `LIKE '%query%'` constraint
+        if search_comments:
+            WHERE += " AND comments.contents LIKE printf('%%%s%%', ?)"
+            params.append(search_comments)
+
+        if author:
+            # author is the "username", need to resolve the actor_id from it
+            for users in pm.hook.datasette_comments_users():
+                for user in users:
+                    if user.get("username") == author:
+                        WHERE += " AND comments.author_actor_id = ?"
+                        params.append(user.get("id"))
+                        break
+        if database:
+            WHERE += " AND threads.target_database = ?"
+            params.append(database)
+
+        if table:
+            WHERE += " AND threads.target_table = ?"
+            params.append(table)
+
+        WHERE += f" AND {'' if is_resolved else 'NOT'} threads.marked_resolved"
+
+        for tag in contains_tag:
+            if not tag:
+                continue
+            WHERE += " AND ? in (select value from json_each(comments.hashtags))"
+            params.append(tag)
+
+        sql = f"""
               SELECT
                 comments.author_actor_id,
                 comments.contents,
                 comments.created_at,
+                (strftime('%s', 'now') - strftime('%s', comments.created_at)) as created_duration_seconds,
                 threads.target_type,
                 threads.target_database,
                 threads.target_table,
@@ -542,30 +608,74 @@ class Routes:
                 threads.target_column
               FROM datasette_comments_comments AS comments
               LEFT JOIN datasette_comments_threads AS threads ON threads.id = comments.thread_id
-              WHERE NOT threads.marked_resolved
+              WHERE {WHERE}
               ORDER BY comments.created_at DESC
               LIMIT 100;
-        """,
-        )
+        """
+        results = await datasette.get_internal_database().execute(sql, params)
         data = [dict(row) for row in results.rows]
         author = await author_from_request(datasette, request)
 
         actor_ids = set(row["author_actor_id"] for row in data)
         actors = await datasette.actors_from_ids(actor_ids)
+
+        # augment the rows with extra metadata
         for row in data:
             author = author_from_actor(datasette, actors, row["author_actor_id"])
             row["author"] = asdict(author)
 
-        return Response.html(
-            await datasette.render_template(
-                "activity_view.html",
-                {
-                    "data": data,
-                    "author": asdict(author),
-                },
-                request=request,
+            # if there's a "label column" for the table, then resolve the "label" for the row
+            label_column = await get_label_column(
+                datasette, row["target_database"], row["target_table"]
             )
-        )
+            if label_column:
+                try:
+                    rowids = json.loads(row["target_row_ids"])
+                except Exception:
+                    row["target_label"] = None
+                    continue
+
+                target_label = await get_label_for_row(
+                    datasette.databases[row["target_database"]],
+                    row["target_table"],
+                    label_column,
+                    rowids,
+                )
+                row["target_label"] = target_label
+            else:
+                row["target_label"] = None
+
+        return Response.json({"data": data})
+
+
+# figured this would help with performance, to not hit label_column_for_table all the time?
+cached_label_columns = {}
+
+
+# wanted to use lru_cache here, but doesn't work with async
+async def get_label_column(datasette, db: str, table: str):
+    key = f"{db}/{table}"
+    lookup = cached_label_columns.get(key)
+    if lookup:
+        return lookup
+    result = await datasette.databases[db].label_column_for_table(table)
+    cached_label_columns[key] = result
+    return result
+
+
+# Based on https://github.com/simonw/datasette/blob/452a587e236ef642cbc6ae345b58767ea8420cb5/datasette/utils/__init__.py#L1209
+async def get_label_for_row(db, table: str, label_column: str, rowids: List[str]):
+    pks = await db.primary_keys(table)
+    wheres = [f'"{pk}"=:p{i}' for i, pk in enumerate(pks)]
+    sql = f"select [{label_column}] from [{table}] where {' AND '.join(wheres)} limit 1"
+    params = {}
+    for i, pk_value in enumerate(rowids):
+        params[f"p{i}"] = pk_value
+    results = await db.execute(sql, params)
+    row = results.first()
+    if row is None:
+        return None
+    return row[label_column]
 
 
 @hookimpl
@@ -580,6 +690,22 @@ def register_permissions(datasette):
             default=False,
         )
     ]
+
+
+@hookimpl
+def menu_links(datasette, actor):
+    async def inner():
+        if await datasette.permission_allowed(
+            actor, PERMISSION_ACCESS_NAME, default=False
+        ):
+            return [
+                {
+                    "href": datasette.urls.path("/-/datasette-comments/activity"),
+                    "label": "Comments",
+                },
+            ]
+
+    return inner
 
 
 @hookimpl
@@ -602,9 +728,15 @@ def register_routes():
         (r"^/-/datasette-comments/api/reaction/add$", Routes.reaction_add),
         (r"^/-/datasette-comments/api/reaction/remove$", Routes.reaction_remove),
         (r"^/-/datasette-comments/api/reactions/(?P<comment_id>.*)$", Routes.reactions),
+        # autocomplete helper on drafts
+        (
+            r"^/-/datasette-comments/api/autocomplete/mentions$",
+            Routes.autocomplete_mentions,
+        ),
         # views
         (r"^/-/datasette-comments/tags/(?P<tag>.*)$", Routes.tag_view),
         (r"^/-/datasette-comments/activity$", Routes.activity_view),
+        (r"^/-/datasette-comments/api/activity_search$", Routes.activity_search),
     ]
 
 
@@ -635,6 +767,9 @@ class Author:
     # is on.
     profile_photo_url: Optional[str]
 
+    # the username is used for at-mentions. Should be unique to other actors
+    username: Optional[str]
+
 
 def author_from_actor(datasette, actors, actor_id) -> Author:
     enable_gravatar = (datasette.plugin_config("datasette-comments") or {}).get(
@@ -643,14 +778,14 @@ def author_from_actor(datasette, actors, actor_id) -> Author:
     actor = actors.get(actor_id)
 
     if actor is None:
-        return Author(actor_id, "", None)
+        return Author(actor_id, "", None, None)
 
     name = actor.get("name")
     profile_photo_url = actor.get("profile_picture_url")
     if profile_photo_url is None and enable_gravatar and actor.get("email"):
         profile_photo_url = gravtar_url(actor.get("email"))
 
-    return Author(actor_id, name, profile_photo_url)
+    return Author(actor_id, name, profile_photo_url, actor.get("username"))
 
 
 async def author_from_id(datasette, actor_id) -> Author:
@@ -688,16 +823,19 @@ async def extra_body_script(
     return ""
 
 
+async def should_inject_content_script(datasette, request, view_name):
+    if not request or not await datasette.permission_allowed(
+        request.actor, PERMISSION_ACCESS_NAME, default=False
+    ):
+        return []
+    return view_name in SUPPORTED_VIEWS
+
+
 @hookimpl
 def extra_js_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if not request or not await datasette.permission_allowed(
-            request.actor, PERMISSION_ACCESS_NAME, default=False
-        ):
-            return []
-        if view_name in SUPPORTED_VIEWS:
+        if should_inject_content_script(datasette, request, view_name):
             return [
-                # TODO only include if actor can make comments
                 datasette.urls.path(
                     "/-/static-plugins/datasette-comments/content_script.min.js"
                 )
@@ -710,13 +848,11 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
 @hookimpl
 def extra_css_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if not request or not await datasette.permission_allowed(
-            request.actor, PERMISSION_ACCESS_NAME, default=False
-        ):
-            return []
-        if view_name in SUPPORTED_VIEWS:
+        if should_inject_content_script(datasette, request, view_name):
             return [
-                datasette.urls.path("/-/static-plugins/datasette-comments/style.css")
+                datasette.urls.path(
+                    "/-/static-plugins/datasette-comments/content_script.min.css"
+                )
             ]
         return []
 

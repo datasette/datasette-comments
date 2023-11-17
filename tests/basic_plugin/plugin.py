@@ -5,15 +5,15 @@ actors = {
         "id": "1",
         "username": "asg017",
         "name": "Alex Garcia",
-        #"email": "alexsebastian.garcia@gmail.com"
-        #"profile_picture_url": "https://avatars.githubusercontent.com/u/15178711?v=4",
+        "email": "alexsebastian.garcia@gmail.com",
+        # "profile_picture_url": "https://avatars.githubusercontent.com/u/15178711?v=4",
     },
     "2": {
         "id": "2",
         "username": "simonw",
         "name": "Simon Willison",
         "email": "swillison@gmail.com",
-        #"profile_picture_url": "https://avatars.githubusercontent.com/u/9599?v=4",
+        # "profile_picture_url": "https://avatars.githubusercontent.com/u/9599?v=4",
     },
 }
 
@@ -34,3 +34,8 @@ def actors_from_ids(datasette, actor_ids):
 @hookimpl
 def datasette_comments_mentioned(datasette):
     return "Response from this plugin hook"
+
+
+@hookimpl
+def datasette_comments_users():
+    return list(actors.values())

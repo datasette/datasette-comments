@@ -4,7 +4,8 @@ js:
   ./node_modules/.bin/esbuild \
     --bundle --minify --format=esm  --jsx-factory=h --jsx-fragment=Fragment {{flags}} \
     --out-extension:.js=.min.js \
-    datasette_comments/frontend/targets/* \
+    --out-extension:.css=.min.css \
+    datasette_comments/frontend/targets/*.tsx \
     --outdir=datasette_comments/static
 
 dev:

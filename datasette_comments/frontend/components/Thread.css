@@ -31,13 +31,14 @@
   display: flex;
   justify-content: end;
 
-  & button {
+  & button.mark-resolved-button {
     background: none;
     border: none;
     cursor: pointer;
+    fill: #666;
 
     & svg:hover {
-      fill: red;
+      fill: #222;
     }
   }
 }
@@ -101,6 +102,13 @@
       padding: 3px 6px;
     }
   }
+
+  & .mention-suggestion {
+    cursor: pointer;
+    &:hover {
+      background-color: #dedede;
+    }
+  }
 }
 
 /* REACTIONS */
@@ -151,11 +159,4 @@
       height: 20px;
     }
   }
-}
-
-.xxx svg {
-  display: none;
-}
-.xxx:hover svg {
-  display: block;
 }

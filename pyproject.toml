@@ -8,7 +8,7 @@ license = {text = "Apache-2.0"}
 classifiers = [
     "License :: OSI Approved :: Apache Software License"
 ]
-dependencies = ["datasette>=1.0a6", "python-ulid", "sqlite-migrate==0.1a2"]
+dependencies = ["datasette>=1.0a6", "python-ulid", "sqlite-migrate==0.1b0"]
 
 [project.urls]
 Homepage = "https://github.com/datasette/datasette-comments"
