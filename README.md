@@ -21,7 +21,7 @@ Once installed, users with the `datasette-comments-access` will be able to view 
 
 This plugin provies the following plugin hook which can be used to customize its behavior:
 
-### datasette_comments_users()
+### datasette_comments_users(datasette)
 
 This hook should return a list of dictionaries, each representing a user that should be made available to the plugin. Each dictionary should have the following keys:
 

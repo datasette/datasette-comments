@@ -149,8 +149,9 @@ async def datasette_with_plugin():
         __name__ = "TestPlugin"
 
         @hookimpl
-        def datasette_comments_users(self):
+        def datasette_comments_users(self, datasette):
             async def inner():
+                datasette._datasette_comments_users_accessed = True
                 return list(actors.values())
 
             return inner
