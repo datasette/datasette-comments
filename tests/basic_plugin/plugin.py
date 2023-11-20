@@ -38,4 +38,7 @@ def datasette_comments_mentioned(datasette):
 
 @hookimpl
 def datasette_comments_users():
-    return list(actors.values())
+    async def inner():
+        return list(actors.values())
+
+    return inner

@@ -1,7 +1,10 @@
 import json
 from datasette.app import Datasette
+from datasette.plugins import pm
+from datasette import hookimpl
 from subprocess import Popen, PIPE
 import pytest
+import pytest_asyncio
 from syrupy.extensions.image import PNGImageSnapshotExtension
 from sys import executable
 from datasette_comments import SCHEMA
@@ -39,6 +42,14 @@ actors = {{
         "profile_picture_url": "{profile_pic('blue')}",
     }},
 }}
+
+
+@hookimpl
+def datasette_comments_users():
+    async def inner():
+        return list(actors.values())
+
+    return inner
 
 
 @hookimpl
@@ -115,3 +126,41 @@ def wait_until_responds(url, timeout=5.0, **kwargs):
         except httpx.ConnectError:
             time.sleep(0.1)
     raise AssertionError("Timed out waiting for {} to respond".format(url))
+
+
+@pytest_asyncio.fixture
+async def datasette_with_plugin():
+    actors = {
+        "1": {
+            "id": "1",
+            "username": "asg017",
+            "name": "Alex Garcia",
+            "email": "alexsebastian.garcia@example.com",
+        },
+        "2": {
+            "id": "2",
+            "username": "simonw",
+            "name": "Simon Willison",
+            "email": "swillison@example.com",
+        },
+    }
+
+    class TestPlugin:
+        __name__ = "TestPlugin"
+
+        @hookimpl
+        def datasette_comments_users(self):
+            async def inner():
+                return list(actors.values())
+
+            return inner
+
+    pm.register(TestPlugin(), name="undo")
+    try:
+        yield Datasette(
+            memory=True,
+            metadata={"permissions": {"datasette-comments-access": {"id": ["alex"]}}},
+            pdb=True,
+        )
+    finally:
+        pm.unregister(name="undo")
