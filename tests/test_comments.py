@@ -76,10 +76,13 @@ async def test_permissions():
     ],
 )
 async def test_autocomplete_mentions(datasette_with_plugin, prefix, expected):
+    assert not hasattr(datasette_with_plugin, "_datasette_comments_users_accessed")
     response = await datasette_with_plugin.client.get(
         "/-/datasette-comments/api/autocomplete/mentions?prefix={}".format(prefix),
         cookies=cookie_for_actor(datasette_with_plugin, "alex"),
     )
+    assert datasette_with_plugin._datasette_comments_users_accessed
     assert response.status_code == 200
     data = response.json()
     assert data == {"suggestions": expected}
+    delattr(datasette_with_plugin, "_datasette_comments_users_accessed")

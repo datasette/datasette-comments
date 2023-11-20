@@ -18,7 +18,7 @@ def _datasette_comments_mentioned(datasette, author_actor, target_actor):
 
 
 @hookspec
-def datasette_comments_users():
+def datasette_comments_users(datasette):
     """
     List of users that can be authors or mentioned in comments.
 

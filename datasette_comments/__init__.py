@@ -540,7 +540,7 @@ class Routes:
     async def autocomplete_mentions(scope, receive, datasette, request):
         prefix = request.args.get("prefix")
         suggestions = []
-        for users in pm.hook.datasette_comments_users():
+        for users in pm.hook.datasette_comments_users(datasette=datasette):
             for user in await await_me_maybe(users):
                 username = user.get("username")
                 if username and username.startswith(prefix):
@@ -573,7 +573,9 @@ class Routes:
 
         if author:
             # author is the "username", need to resolve the actor_id from it
-            for users in await await_me_maybe(pm.hook.datasette_comments_users()):
+            for users in await await_me_maybe(
+                pm.hook.datasette_comments_users(datasette=datasette)
+            ):
                 for user in users:
                     if user.get("username") == author:
                         WHERE += " AND comments.author_actor_id = ?"
