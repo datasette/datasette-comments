@@ -291,7 +291,7 @@ function Draft(props: { onSubmitted: (contents: string) => void }) {
                 }
               }}
               value={value}
-              style="width: calc(100% - 1rem)"
+              style="width: calc(100% - 1rem); font-size: 16px;"
             ></textarea>
           </div>
           <div>
