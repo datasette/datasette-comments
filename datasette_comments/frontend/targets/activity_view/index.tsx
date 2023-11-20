@@ -119,7 +119,7 @@ const stateUrlParams = computed(() => {
     params.set("sc", STATE.searchComments.value);
   }
   if (STATE.author.value) {
-    params.set("author", STATE.searchComments.value);
+    params.set("author", STATE.author.value);
   }
   if (STATE.database.value) {
     params.set("database", STATE.database.value);
