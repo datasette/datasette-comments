@@ -749,7 +749,9 @@ def author_from_actor(datasette, actors, actor_id) -> Author:
 
 async def author_from_id(datasette, actor_id) -> Author:
     actors = await datasette.actors_from_ids([actor_id])
-    return author_from_actor(datasette, actors, actor_id)
+    # use the first key instead of actor_id, since it may be implicitly cast as a string
+    # by some plugins (datasette-remote-actors)
+    return author_from_actor(datasette, actors, list(actors.keys())[0])
 
 
 async def author_from_request(datasette, request) -> Author:
