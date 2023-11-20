@@ -1,12 +1,12 @@
 //import "../../static/style.css";
 import "./activity_view.css";
 import { h, render } from "preact";
-import { DEFAULT_PROFILE_PICTURE } from "../components/Thread";
-import { Api, ActivtySearchResult, apiReducer, State, Action } from "../api";
+import { DEFAULT_PROFILE_PICTURE } from "../../components/Thread";
+import { Api, ActivtySearchResult, apiReducer, State, Action } from "../../api";
 import { useReducer, useState } from "preact/hooks";
 import { batch, computed, signal, useSignalEffect } from "@preact/signals";
-import { Duration } from "../components/Duration";
-import { ICONS } from "../icons";
+import { Duration } from "../../components/Duration";
+import { ICONS } from "../../icons";
 
 function targetPath({
   target_type,

@@ -1,41 +1,9 @@
-/**
- * This "content script" is JavaScript that gets executing on every Datasette
- * page for each client. The main goal of this content script is to ensure
- * targets with unresolved threads/comments are shown to users that have
- * permission to see it.
- *
- * Supported targets:
- * 1. Row View `/db/table/rowids`
- * 2. Table View `/db/table`
- *
- *
- *
- * It's important that the code-size of this script remains minimal and
- * resources are used sparringly (memory, network requests, etc.). The
- * JavaScript for other datasette-comments targets (admin pages, etc)
- * exist in different files.
- *
- */
 import { h, render } from "preact";
-import { ICONS } from "../icons";
-import { Thread, ThreadProps } from "../components/Thread";
-import { Api, Author, CommentTargetType, CommentData } from "../api";
 import { useEffect, useState } from "preact/hooks";
+import { Api, Author, CommentTargetType } from "../../api";
+import { Thread } from "../../components/Thread";
+import { ICONS } from "../../icons";
 let THREAD_ROOT: HTMLElement;
-
-function addCommentIcon(
-  target: HTMLElement,
-  hasThreads: boolean,
-  onClick: (icon: HTMLElement) => void
-) {
-  const icon = document.createElement("span");
-  Object.assign(icon.style, { cursor: "pointer" });
-  icon.innerHTML = hasThreads ? ICONS.COMMENT : ICONS.COMMENT_ADD;
-  icon.addEventListener("click", () => {
-    onClick(icon);
-  });
-  target.appendChild(icon);
-}
 
 // a wrapper around <Thread/> to make it appear next to elements in the page
 function ThreadPopup(props: {
@@ -44,7 +12,7 @@ function ThreadPopup(props: {
   initialId: string | null;
   marked_resolved: boolean;
   author: Author;
-  onNewThread: () => void;
+  onNewThread: (id: string) => void;
 }) {
   const { attachTo } = props;
   const [show, setShow] = useState<boolean>(true);
@@ -52,13 +20,13 @@ function ThreadPopup(props: {
   // handle opening/showing thread on clicking out + escape keypress
   useEffect(() => {
     setShow(true);
-    function onKeyDown(e) {
+    function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setShow(false);
       }
     }
-    function onClick(e) {
-      let current = e.target;
+    function onClick(e: MouseEvent) {
+      let current = e.target as HTMLElement;
       while (current) {
         current = current.parentElement;
         if (current?.classList?.contains("datasette-comments-thread-popup")) {
@@ -89,8 +57,8 @@ function ThreadPopup(props: {
     };
   }, [props.attachTo, show]);
 
-  async function onNewThread(): Promise<string> {
-    props.onNewThread();
+  async function onNewThread(thread_id: string) {
+    props.onNewThread(thread_id);
     return;
   }
 
@@ -120,85 +88,46 @@ function ThreadPopup(props: {
   );
 }
 
+function addCommentIcon(
+  target: HTMLElement,
+  hasThreads: boolean,
+  onClick: (icon: HTMLElement) => void
+) {
+  const icon = document.createElement("span");
+  Object.assign(icon.style, { cursor: "pointer" });
+  icon.innerHTML = hasThreads ? ICONS.COMMENT : ICONS.COMMENT_ADD;
+  icon.addEventListener("click", () => {
+    onClick(icon);
+  });
+  target.appendChild(icon);
+}
+
 interface TableRow {
   pkEncoded: string;
-  td: HTMLElement;
+  tdElement: HTMLElement;
 }
 function tableViewExtractRowIds(): TableRow[] {
   const encodedRowids = [];
   const rowids = [];
-  for (const td of document.querySelectorAll("tbody td.type-pk")) {
-    const href = td.querySelector("a").getAttribute("href");
+  for (const tdElement of document.querySelectorAll("tbody td.type-pk")) {
+    const href = tdElement.querySelector("a").getAttribute("href");
     // skip the first two parts, which are database/table names
     const [pkEncoded] = href.split("/").slice(-1);
     encodedRowids.push(pkEncoded);
     rowids.push({
       pkEncoded,
-      td,
+      tdElement,
     });
   }
   return rowids;
 }
 
-function RowViewComments(props: {
-  row_threads: string[];
-  author: Author;
-  database: string;
-  table: string;
-  rowids: string;
-}) {
-  const { row_threads, author, database, table, rowids } = props;
-  const [startThread, setStartThread] = useState<boolean>(false);
-  return (
-    <div>
-      <h2>Comments</h2>
-
-      {row_threads.map((d) => (
-        <Thread
-          initialId={d}
-          author={author}
-          target={{ type: "row", database, table, rowids }}
-        />
-      ))}
-      {startThread && (
-        <Thread
-          initialId={null}
-          author={author}
-          target={{ type: "row", database, table, rowids }}
-        />
-      )}
-      {!startThread && row_threads.length === 0 && (
-        <div>
-          <div>No comments!</div>
-          <button onClick={() => setStartThread(true)}>Add comment</button>
-        </div>
-      )}
-    </div>
-  );
-}
-async function attachRowView(database: string, table: string, author: Author) {
-  const rowids = window.location.pathname.split("/").pop();
-  const threads = await Api.rowViewThreads(database, table, rowids);
-  const target = document
-    .querySelector("section.content")
-    .appendChild(document.createElement("div"));
-
-  render(
-    <RowViewComments
-      row_threads={threads.data.row_threads}
-      author={author}
-      database={database}
-      table={table}
-      rowids={rowids}
-    />,
-    target
-  );
-}
-async function attachTableView(
+export async function attachTableView(
   database: string,
   table: string,
   author: Author
 ) {
+  const THREAD_ROOT = document.body.appendChild(document.createElement("div"));
   const rowids = tableViewExtractRowIds();
   const response = await Api.tableViewThreads(
     database,
@@ -239,9 +168,9 @@ async function attachTableView(
 
   /* step 3: row comments */
 
-  for (const { td, pkEncoded } of rowids) {
-    const thread_id = rowThreadLookup.get(pkEncoded) ?? null;
-    td.style.position = "relative";
+  for (const { tdElement, pkEncoded } of rowids) {
+    let thread_id = rowThreadLookup.get(pkEncoded) ?? null;
+    tdElement.style.position = "relative";
     const span = document.createElement("span");
     Object.assign(span.style, { position: "absolute", bottom: 0, right: 0 });
     const button = document.createElement("button");
@@ -262,11 +191,11 @@ async function attachTableView(
       function mouseleave() {
         button.style.display = "none";
       }
-      td.addEventListener("mouseenter", mouseenter);
-      td.addEventListener("mouseleave", mouseleave);
+      tdElement.addEventListener("mouseenter", mouseenter);
+      tdElement.addEventListener("mouseleave", mouseleave);
       cancel = () => {
-        td.removeEventListener("mouseenter", mouseenter);
-        td.removeEventListener("mouseleave", mouseleave);
+        tdElement.removeEventListener("mouseenter", mouseenter);
+        tdElement.removeEventListener("mouseleave", mouseleave);
       };
     }
 
@@ -277,10 +206,12 @@ async function attachTableView(
     (button.querySelector("svg") as SVGElement).height = 16;
 
     button.addEventListener("click", () => {
+      // clear out any pre-existing preact components
       render(null, THREAD_ROOT);
+
       render(
         <ThreadPopup
-          attachTo={td}
+          attachTo={tdElement}
           target={{
             type: "row",
             database,
@@ -290,7 +221,9 @@ async function attachTableView(
           initialId={thread_id}
           marked_resolved={false}
           author={author}
-          onNewThread={() => {
+          onNewThread={(id) => {
+            // when a new thread is created, changed the row button to the "comment" icon, from the "new comment" icon
+            thread_id = id;
             button.innerHTML = ICONS.COMMENT;
             button.style.display = "block";
             if (cancel) cancel();
@@ -300,36 +233,8 @@ async function attachTableView(
       );
     });
     span.appendChild(button);
-    td.appendChild(span);
+    tdElement.appendChild(span);
   }
 
   /* step 4: value comments */
 }
-
-function main() {
-  THREAD_ROOT = document.body.appendChild(document.createElement("div"));
-  const CONFIG = (window as any).DATASETTE_COMMENTS_META as {
-    view_name: "index" | "database" | "table" | "row";
-    database?: string;
-    table?: string;
-    author: Author;
-  };
-
-  switch (CONFIG.view_name) {
-    case "index":
-      // TODO supported index page comments
-      break;
-    case "database":
-      // TODO support database page comments
-      break;
-    case "table":
-      if (CONFIG.database && CONFIG.table)
-        attachTableView(CONFIG.database!, CONFIG.table!, CONFIG.author);
-      break;
-    case "row":
-      attachRowView(CONFIG.database!, CONFIG.table!, CONFIG.author);
-      break;
-  }
-}
-
-document.addEventListener("DOMContentLoaded", main);

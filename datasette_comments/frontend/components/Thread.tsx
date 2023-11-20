@@ -352,7 +352,7 @@ export interface ThreadProps {
   initialId: string | null;
   author: Author;
   target: CommentTargetType;
-  onNewThread?: (contents: string) => Promise<string>;
+  onNewThread?: (thread_id: string) => void;
 }
 
 export function Thread(props: ThreadProps) {
@@ -391,7 +391,7 @@ export function Thread(props: ThreadProps) {
     if (id === null) {
       Api.threadNew(props.target, contents).then(({ thread_id }) => {
         setId(thread_id);
-        if (props.onNewThread) props.onNewThread(contents);
+        if (props.onNewThread) props.onNewThread(thread_id);
       });
     } else {
       Api.commentAdd(id, contents)

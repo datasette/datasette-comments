@@ -5,7 +5,7 @@ js:
     --bundle --minify --format=esm  --jsx-factory=h --jsx-fragment=Fragment {{flags}} \
     --out-extension:.js=.min.js \
     --out-extension:.css=.min.css \
-    datasette_comments/frontend/targets/*.tsx \
+    datasette_comments/frontend/targets/**/index.tsx \
     --outdir=datasette_comments/static
 
 dev:

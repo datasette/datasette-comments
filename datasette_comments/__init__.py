@@ -484,50 +484,6 @@ class Routes:
         return Response.json({"ok": True})
 
     @check_permission()
-    async def tag_view(scope, receive, datasette, request):
-        tag = request.url_vars["tag"]
-        results = await datasette.get_internal_database().execute(
-            """
-            WITH threads_with_tags AS (
-              SELECT distinct thread_id
-              FROM datasette_comments_comments
-              WHERE (
-                SELECT 1
-                FROM json_each(hashtags)
-                WHERE value = :tag
-              )
-            )
-            SELECT
-              thread_id,
-              target_type,
-              target_database,
-              target_table,
-              target_row_ids,
-              target_column,
-              marked_resolved
-            FROM threads_with_tags
-            LEFT JOIN datasette_comments_threads ON datasette_comments_threads.id = threads_with_tags.thread_id
-            WHERE NOT marked_resolved
-
-
-        """,
-            {"tag": tag},
-        )
-        data = [dict(row) for row in results.rows]
-        author = await author_from_request(datasette, request)
-        return Response.html(
-            await datasette.render_template(
-                "tag_view.html",
-                {
-                    "data": data,
-                    "author": asdict(author),
-                    "tag": tag,
-                },
-                request=request,
-            )
-        )
-
-    @check_permission()
     async def activity_view(scope, receive, datasette, request):
         return Response.html(
             await datasette.render_template(
@@ -738,7 +694,6 @@ def register_routes():
             Routes.autocomplete_mentions,
         ),
         # views
-        (r"^/-/datasette-comments/tags/(?P<tag>.*)$", Routes.tag_view),
         (r"^/-/datasette-comments/activity$", Routes.activity_view),
         (r"^/-/datasette-comments/api/activity_search$", Routes.activity_search),
     ]
@@ -836,7 +791,7 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
         if await should_inject_content_script(datasette, request, view_name):
             return [
                 datasette.urls.path(
-                    "/-/static-plugins/datasette-comments/content_script.min.js"
+                    "/-/static-plugins/datasette-comments/content_script/index.min.js"
                 )
             ]
         return []
@@ -850,7 +805,7 @@ def extra_css_urls(template, database, table, columns, view_name, request, datas
         if await should_inject_content_script(datasette, request, view_name):
             return [
                 datasette.urls.path(
-                    "/-/static-plugins/datasette-comments/content_script.min.css"
+                    "/-/static-plugins/datasette-comments/content_script/index.min.css"
                 )
             ]
         return []

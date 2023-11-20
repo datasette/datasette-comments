@@ -77,11 +77,13 @@
 
   & .draft-cancel-button {
     background: #d9d9d9;
+    cursor: pointer;
   }
   & .draft-add-button {
     background: #276890;
     color: #d9d9d9;
     margin-left: 0.5rem;
+    cursor: pointer;
 
     &:disabled {
       background: #888;
