@@ -150,6 +150,8 @@ function ActivitySearch() {
       STATE.author.value = author;
       STATE.database.value = database;
       STATE.table.value = table;
+      const newUrl = `${window.location.pathname}?${stateUrlParams.value}`;
+      history.pushState({}, '', newUrl);
     });
   }
   return (
@@ -232,9 +234,6 @@ function ActivitySearch() {
       </div>
       <div className="activity-search-footer">
         <button onClick={onSubmit}>Submit</button>
-        <div>
-          <a href={`?${stateUrlParams}`}>Link to this search</a>
-        </div>
       </div>
     </div>
   );
