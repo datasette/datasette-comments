@@ -27,4 +27,4 @@ test = ["pytest", "pytest-asyncio", "pytest-playwright", "syrupy"]
 namespaces = false
 
 [tool.setuptools.package-data]
-datasette_comments = ["static/*", "templates/*.html", "*.sql"]
+datasette_comments = ["static/**", "templates/*.html", "*.sql"]
