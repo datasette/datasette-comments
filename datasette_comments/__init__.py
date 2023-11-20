@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datasette import hookimpl, Response, Permission, Forbidden
-from datasette.utils import tilde_decode, tilde_encode
+from datasette.utils import await_me_maybe, tilde_decode, tilde_encode
 from datasette.plugins import pm
 from pathlib import Path
 from . import hookspecs
@@ -541,7 +541,7 @@ class Routes:
         prefix = request.args.get("prefix")
         suggestions = []
         for users in pm.hook.datasette_comments_users():
-            for user in users:
+            for user in await await_me_maybe(users):
                 username = user.get("username")
                 if username and username.startswith(prefix):
                     suggestions.append(
@@ -573,7 +573,7 @@ class Routes:
 
         if author:
             # author is the "username", need to resolve the actor_id from it
-            for users in pm.hook.datasette_comments_users():
+            for users in await await_me_maybe(pm.hook.datasette_comments_users()):
                 for user in users:
                     if user.get("username") == author:
                         WHERE += " AND comments.author_actor_id = ?"

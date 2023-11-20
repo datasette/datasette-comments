@@ -39,3 +39,47 @@ async def test_permissions():
         cookies=cookie_for_actor(datasette, "unknown"),
     )
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "prefix,expected",
+    [
+        (
+            "a",
+            [
+                {
+                    "username": "asg017",
+                    "author": {
+                        "actor_id": "1",
+                        "name": None,
+                        "profile_photo_url": None,
+                        "username": None,
+                    },
+                }
+            ],
+        ),
+        (
+            "s",
+            [
+                {
+                    "author": {
+                        "actor_id": "2",
+                        "name": None,
+                        "profile_photo_url": None,
+                        "username": None,
+                    },
+                    "username": "simonw",
+                }
+            ],
+        ),
+    ],
+)
+async def test_autocomplete_mentions(datasette_with_plugin, prefix, expected):
+    response = await datasette_with_plugin.client.get(
+        "/-/datasette-comments/api/autocomplete/mentions?prefix={}".format(prefix),
+        cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {"suggestions": expected}
