@@ -63,9 +63,15 @@ function ThreadPopup(props: {
   }
 
   const rect = attachTo.getBoundingClientRect();
-  const transform = `translate(${rect.left + attachTo.offsetWidth + 10}px, ${
-    rect.top + window.scrollY
-  }px`;
+  let transform;
+  if (window.innerWidth < 600) {
+    // Mobile
+    transform = `translate(20px, ${rect.top + window.scrollY + 40}px)`;
+  } else {
+    transform = `translate(${rect.left + attachTo.offsetWidth + 10}px, ${
+      rect.top + window.scrollY
+    }px`;
+  }
   return (
     <div className="datasette-comments-thread-popup">
       <div
