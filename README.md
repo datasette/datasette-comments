@@ -45,7 +45,17 @@ Now install the dependencies and test dependencies:
 ```bash
 pip install -e '.[test]'
 ```
+And for the JavaScript dependencies (needed to run a JavaScript build):
+```bash
+npm install
+```
 To run the tests:
 ```bash
 pytest
+```
+
+To rebuild the minified JavaScript after making a change to a `.ts` or `.tsx` file:
+
+```bash
+just js
 ```
