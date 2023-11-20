@@ -804,16 +804,19 @@ async def author_from_request(datasette, request) -> Author:
 SUPPORTED_VIEWS = ("index", "database", "table", "row")
 
 
+async def should_inject_content_script(datasette, request, view_name):
+    if not request or not await datasette.permission_allowed(
+        request.actor, PERMISSION_ACCESS_NAME, default=False
+    ):
+        return False
+    return view_name in SUPPORTED_VIEWS
+
+
 @hookimpl
 async def extra_body_script(
     template, database, table, columns, view_name, request, datasette
 ):
-    if not request or not await datasette.permission_allowed(
-        request.actor, PERMISSION_ACCESS_NAME, default=False
-    ):
-        return ""
-
-    if view_name in SUPPORTED_VIEWS:
+    if await should_inject_content_script(datasette, request, view_name):
         author = await author_from_request(datasette, request)
         meta = json.dumps(
             {
@@ -827,18 +830,10 @@ async def extra_body_script(
     return ""
 
 
-async def should_inject_content_script(datasette, request, view_name):
-    if not request or not await datasette.permission_allowed(
-        request.actor, PERMISSION_ACCESS_NAME, default=False
-    ):
-        return False
-    return view_name in SUPPORTED_VIEWS
-
-
 @hookimpl
 def extra_js_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if should_inject_content_script(datasette, request, view_name):
+        if await should_inject_content_script(datasette, request, view_name):
             return [
                 datasette.urls.path(
                     "/-/static-plugins/datasette-comments/content_script.min.js"
@@ -852,7 +847,7 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
 @hookimpl
 def extra_css_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if should_inject_content_script(datasette, request, view_name):
+        if await should_inject_content_script(datasette, request, view_name):
             return [
                 datasette.urls.path(
                     "/-/static-plugins/datasette-comments/content_script.min.css"
