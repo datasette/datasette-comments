@@ -246,7 +246,10 @@ function MentionSuggestion(props: {
     </div>
   );
 }
-function Draft(props: { onSubmitted: (contents: string) => void }) {
+function Draft(props: {
+  onSubmitted: (contents: string) => void;
+  autoFocus: boolean;
+}) {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const { profile_photo_url } = useContext<Author>(AuthorContext);
   const [value, setValue] = useState<string>("");
@@ -255,6 +258,11 @@ function Draft(props: { onSubmitted: (contents: string) => void }) {
     props.onSubmitted(value);
     setValue("");
   }
+  useEffect(() => {
+    if (inputRef.current && props.autoFocus) {
+      inputRef.current.focus();
+    }
+  }, [inputRef, props.autoFocus]);
   return (
     <div class="datasette-comments-draft">
       <div style="display: flex;">
@@ -431,7 +439,11 @@ export function Thread(props: ThreadProps) {
           )}
         </div>
         <div>
-          <Draft onSubmitted={onNewComment} />
+          <Draft
+            onSubmitted={onNewComment}
+            autoFocus={props.initialId === null}
+          />
+          {props.initialId === null ? "1" : "0"}
         </div>
       </div>
     </AuthorContext.Provider>
