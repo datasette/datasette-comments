@@ -73,6 +73,7 @@
     background: #ececec;
     padding: 4px;
     resize: none;
+    font-size: 16px;
   }
 
   & .draft-cancel-button {

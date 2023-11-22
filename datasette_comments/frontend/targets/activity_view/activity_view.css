@@ -30,6 +30,7 @@
 
     & input[type="text"] {
       width: calc(100% - 0.5rem);
+      font-size: 16px;
     }
 
     & .activity-search-field {
