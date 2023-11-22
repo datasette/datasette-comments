@@ -251,9 +251,6 @@ function Draft(props: { onSubmitted: (contents: string) => void }) {
   const { profile_photo_url } = useContext<Author>(AuthorContext);
   const [value, setValue] = useState<string>("");
   const [suggestions, setSuggestions] = useState<Author[]>([]);
-  function onCancel() {
-    setValue("");
-  }
   function onAddComment() {
     props.onSubmitted(value);
     setValue("");
@@ -332,9 +329,6 @@ function Draft(props: { onSubmitted: (contents: string) => void }) {
       </div>
       <div class="draft-bottom-drawer">
         <div>
-          <button class="draft-cancel-button" onClick={onCancel}>
-            Cancel
-          </button>
           <button
             class="draft-add-button"
             onClick={onAddComment}
