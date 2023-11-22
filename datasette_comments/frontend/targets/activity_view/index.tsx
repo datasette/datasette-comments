@@ -294,11 +294,13 @@ function ActivityView() {
         {data.isLoading ? (
           "Loading..."
         ) : data.error ? (
-          <div>Unknown error ocurred.</div>
-        ) : (
+          <div>Unknown error occurred.</div>
+        ) : data.data.length > 0 ? (
           data.data.map((data, i) => (
             <ResultRow data={data} isLastRead={false /*i === idxLastSeen*/} />
           ))
+        ) : (
+          <p>No comments yet</p>
         )}
       </div>
     </div>
