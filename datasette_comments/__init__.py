@@ -17,7 +17,11 @@ pm.add_hookspecs(hookspecs)
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 
+# Can access all datasette-comments features
 PERMISSION_ACCESS_NAME = "datasette-comments-access"
+
+# Can ONLY read comments
+PERMISSION_READONLY_NAME = "datasette-comments-readonly"
 
 
 def insert_comment(thread_id: str, author_actor_id: str, contents: str):
@@ -59,13 +63,20 @@ def insert_comment(thread_id: str, author_actor_id: str, contents: str):
 
 
 # decorator for routes, to ensure the proper permissions are checked
-def check_permission():
+def check_permission(write=False):
     def decorator(func):
         @wraps(func)
         async def wrapper(scope, receive, datasette, request):
-            result = await datasette.permission_allowed(
-                request.actor, PERMISSION_ACCESS_NAME, default=False
-            )
+            if write:
+                result = await datasette.permission_allowed(
+                    request.actor, PERMISSION_ACCESS_NAME, default=False
+                )
+            else:
+                result = await datasette.permission_allowed(
+                    request.actor, PERMISSION_ACCESS_NAME, default=False
+                ) or await datasette.permission_allowed(
+                    request.actor, PERMISSION_READONLY_NAME, default=False
+                )
             if not result:
                 raise Forbidden("Permission denied for datasette-comments")
             return await func(scope, receive, datasette, request)
@@ -78,6 +89,7 @@ def check_permission():
 class Routes:
     @check_permission()
     async def thread_comments(scope, receive, datasette, request):
+        """Retrieves all comments for a given thread"""
         # TODO make sure actor can see the thread target (db, table, etc.)
         thread_id = request.url_vars["thread_id"]
 
@@ -121,8 +133,9 @@ class Routes:
             row["reactions"] = json.loads(row["reactions"]) if row["reactions"] else []
         return Response.json({"ok": True, "data": rows})
 
-    @check_permission()
+    @check_permission(write=True)
     async def thread_mark_resolved(scope, receive, datasette, request):
+        """Mark a thread as 'resolved'"""
         if request.method != "POST":
             return Response.text("", status=405)
 
@@ -143,8 +156,9 @@ class Routes:
 
         return Response.json({"ok": True})
 
-    @check_permission()
+    @check_permission(write=True)
     async def thread_new(scope, receive, datasette, request):
+        """Create a new thread on a 'target'"""
         if request.method != "POST":
             return Response.text("", status=405)
 
@@ -262,8 +276,9 @@ class Routes:
             raise e
             return Response.json({"ok": False})
 
-    @check_permission()
+    @check_permission(write=True)
     async def comment_add(scope, receive, datasette, request):
+        """Add a comment to a pre-existing thread"""
         # TODO ensure actor has permission to view/comment the target
 
         if request.method != "POST":
@@ -288,6 +303,7 @@ class Routes:
 
     @check_permission()
     async def table_view_threads(scope, receive, datasette, request):
+        """Retrieve all threads for a table view"""
         # TODO ensure actor has permission to view the table
 
         if request.method != "POST":
@@ -356,6 +372,7 @@ class Routes:
 
     @check_permission()
     async def row_view_threads(scope, receive, datasette, request):
+        """Retrieve all threads for a row view"""
         # TODO ensure actor has permission to view the row
 
         if request.method != "POST":
@@ -394,6 +411,7 @@ class Routes:
 
     @check_permission()
     async def reactions(scope, receive, datasette, request):
+        """Retrieve reactions data for a specific comment"""
         # TODO permissions
         comment_id = request.url_vars["comment_id"]
 
@@ -409,8 +427,9 @@ class Routes:
         )
         return Response.json([dict(row) for row in results.rows])
 
-    @check_permission()
+    @check_permission(write=True)
     async def reaction_add(scope, receive, datasette, request):
+        """Add a reaction to a specific comment"""
         # TODO permissions
         if request.method != "POST":
             return Response.text("POST required", status=405)
@@ -451,8 +470,9 @@ class Routes:
         )
         return Response.json({"ok": True})
 
-    @check_permission()
+    @check_permission(write=True)
     async def reaction_remove(scope, receive, datasette, request):
+        """Remove a reaction"""
         # TODO permissions
         if request.method != "POST":
             return Response.text("POST required", status=405)
@@ -485,6 +505,7 @@ class Routes:
 
     @check_permission()
     async def activity_view(scope, receive, datasette, request):
+        """The HTML Activity page view"""
         return Response.html(
             await datasette.render_template(
                 "activity_view.html",
@@ -492,8 +513,9 @@ class Routes:
             )
         )
 
-    @check_permission()
+    @check_permission(write=True)
     async def autocomplete_mentions(scope, receive, datasette, request):
+        """Return a list of users that can be at-mentioned, for a autcomplete list"""
         prefix = request.args.get("prefix")
         suggestions = []
         for users in pm.hook.datasette_comments_users(datasette=datasette):
@@ -512,6 +534,7 @@ class Routes:
 
     @check_permission()
     async def activity_search(scope, receive, datasette, request):
+        """Search endpoint for the acitivity page."""
         search_comments = request.args.get("searchComments")
         author = request.args.get("author")
         database = request.args.get("database")
@@ -644,11 +667,19 @@ def register_permissions(datasette):
         Permission(
             name=PERMISSION_ACCESS_NAME,
             abbr=None,
-            description="Can access datasette-comments features.",
+            description="Can write and create datasette-comments threads, comments and reactions.",
             takes_database=False,
             takes_resource=False,
             default=False,
-        )
+        ),
+        Permission(
+            name=PERMISSION_READONLY_NAME,
+            abbr=None,
+            description="Can read datasette-comments threads, comments and reactions.",
+            takes_database=False,
+            takes_resource=False,
+            default=False,
+        ),
     ]
 
 
@@ -657,6 +688,8 @@ def menu_links(datasette, actor):
     async def inner():
         if await datasette.permission_allowed(
             actor, PERMISSION_ACCESS_NAME, default=False
+        ) or await datasette.permission_allowed(
+            actor, PERMISSION_READONLY_NAME, default=False
         ):
             return [
                 {
@@ -762,11 +795,15 @@ SUPPORTED_VIEWS = ("index", "database", "table", "row")
 
 
 async def should_inject_content_script(datasette, request, view_name):
-    if not request or not await datasette.permission_allowed(
-        request.actor, PERMISSION_ACCESS_NAME, default=False
-    ):
+    if not request:
         return False
-    return view_name in SUPPORTED_VIEWS
+    if await datasette.permission_allowed(
+        request.actor, PERMISSION_ACCESS_NAME, default=False
+    ) or await datasette.permission_allowed(
+        request.actor, PERMISSION_READONLY_NAME, default=False
+    ):
+        return view_name in SUPPORTED_VIEWS
+    return False
 
 
 @hookimpl
@@ -781,6 +818,9 @@ async def extra_body_script(
                 "database": database,
                 "table": table,
                 "author": asdict(author),
+                "readonly_viewer": await datasette.permission_allowed(
+                    request.actor, PERMISSION_READONLY_NAME, default=False
+                ),
             }
         )
         return f"window.DATASETTE_COMMENTS_META = {meta}"

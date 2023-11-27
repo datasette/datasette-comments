@@ -32,6 +32,7 @@ const AuthorContext = createContext<Author>({
 function ReactionSection(props: {
   comment_id: string;
   initialReactions: ReactionData[];
+  readonly_viewer: boolean;
 }) {
   const { actor_id } = useContext(AuthorContext);
   const [reactions, setReactions] = useState<ReactionData[]>(
@@ -43,10 +44,12 @@ function ReactionSection(props: {
     Api.reactions(props.comment_id).then((data) => setReactions(data));
   }
   function onClickAddReaction(e) {
+    if (props.readonly_viewer) return;
     e.stopPropagation();
     setShowReactionPopup((prev) => !prev);
   }
   function onReact(reaction: string) {
+    if (props.readonly_viewer) return;
     Api.reactionAdd(props.comment_id, reaction).then(() => refreshReactions());
   }
 
@@ -90,12 +93,14 @@ function ReactionSection(props: {
       {Array.from(reactionStats).map(([reaction, reactors], i) => (
         <div>
           <button
+            disabled={props.readonly_viewer}
             key={i}
             class={
               "other-reactions" +
               (reactors.indexOf(actor_id) >= 0 ? " viewer-reacted" : "")
             }
             onClick={() => {
+              if (props.readonly_viewer) return;
               if (reactionStats.get(reaction)?.find((id) => id === actor_id)) {
                 Api.reactionRemove(props.comment_id, reaction).then(() =>
                   refreshReactions()
@@ -114,6 +119,7 @@ function ReactionSection(props: {
           class="datasette-comments-add-reaction"
           dangerouslySetInnerHTML={{ __html: ICONS.ADD_REACTION }}
           onClick={onClickAddReaction}
+          disabled={props.readonly_viewer}
         ></button>
       </div>
       <div style="position:relative">
@@ -129,9 +135,11 @@ function ReactionSection(props: {
                   key={d}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (props.readonly_viewer) return;
                     onReact(d);
                     setShowReactionPopup(false);
                   }}
+                  disabled={props.readonly_viewer}
                 >
                   {d}
                 </button>
@@ -143,7 +151,7 @@ function ReactionSection(props: {
   );
 }
 
-function Comment(props: { comment: CommentData }) {
+function Comment(props: { comment: CommentData; readonly_viewer: boolean }) {
   const { comment } = props;
   return (
     <div class="datasette-comments-comment">
@@ -207,6 +215,7 @@ function Comment(props: { comment: CommentData }) {
       <ReactionSection
         comment_id={comment.id}
         initialReactions={comment.reactions}
+        readonly_viewer={props.readonly_viewer}
       />
     </div>
   );
@@ -249,6 +258,7 @@ function MentionSuggestion(props: {
 function Draft(props: {
   onSubmitted: (contents: string) => void;
   autoFocus: boolean;
+  readonly_viewer: boolean;
 }) {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const { profile_photo_url } = useContext<Author>(AuthorContext);
@@ -258,11 +268,14 @@ function Draft(props: {
     props.onSubmitted(value);
     setValue("");
   }
+  // On mount, focus the textarea if props.autoFocus is set.
+  // The autofocus=True HTML attribute wasn't working correctly, so doing manually
   useEffect(() => {
     if (inputRef.current && props.autoFocus) {
       inputRef.current.focus();
     }
   }, [inputRef, props.autoFocus]);
+
   return (
     <div class="datasette-comments-draft">
       <div style="display: flex;">
@@ -297,6 +310,7 @@ function Draft(props: {
               }}
               value={value}
               style="width: calc(100% - 1rem); font-size: 16px;"
+              disabled={props.readonly_viewer}
             ></textarea>
           </div>
           <div>
@@ -340,7 +354,7 @@ function Draft(props: {
           <button
             class="draft-add-button"
             onClick={onAddComment}
-            disabled={value === ""}
+            disabled={value === "" || props.readonly_viewer}
           >
             Add comment
           </button>
@@ -355,6 +369,7 @@ export interface ThreadProps {
   author: Author;
   target: CommentTargetType;
   onNewThread?: (thread_id: string) => void;
+  readonly_viewer: boolean;
 }
 
 export function Thread(props: ThreadProps) {
@@ -390,6 +405,7 @@ export function Thread(props: ThreadProps) {
   }, [id]);
 
   function onNewComment(contents: string) {
+    if (props.readonly_viewer) return;
     if (id === null) {
       Api.threadNew(props.target, contents).then(({ thread_id }) => {
         setId(thread_id);
@@ -402,6 +418,7 @@ export function Thread(props: ThreadProps) {
     }
   }
   function onMarkAsResolved() {
+    if (props.readonly_viewer) return;
     const confirmed = window.confirm(
       "Are you sure you want to mark this thread resolved? You can still access resolved thread on the Comments page."
     );
@@ -422,6 +439,7 @@ export function Thread(props: ThreadProps) {
             <button
               class="mark-resolved-button"
               onClick={() => onMarkAsResolved()}
+              disabled={props.readonly_viewer}
             >
               <span
                 dangerouslySetInnerHTML={{ __html: ICONS.CHECK_CIRCLE }}
@@ -435,15 +453,20 @@ export function Thread(props: ThreadProps) {
           ) : comments.error ? (
             comments.error
           ) : (
-            comments.data?.map((comment) => <Comment comment={comment} />)
+            comments.data?.map((comment) => (
+              <Comment
+                comment={comment}
+                readonly_viewer={props.readonly_viewer}
+              />
+            ))
           )}
         </div>
         <div>
           <Draft
             onSubmitted={onNewComment}
             autoFocus={props.initialId === null}
+            readonly_viewer={props.readonly_viewer}
           />
-          {props.initialId === null ? "1" : "0"}
         </div>
       </div>
     </AuthorContext.Provider>

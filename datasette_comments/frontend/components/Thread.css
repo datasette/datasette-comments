@@ -40,6 +40,10 @@
     & svg:hover {
       fill: #222;
     }
+
+    &:hover {
+      fill: #333;
+    }
   }
 }
 

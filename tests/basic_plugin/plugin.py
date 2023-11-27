@@ -15,6 +15,7 @@ actors = {
         "email": "swillison@gmail.com",
         # "profile_picture_url": "https://avatars.githubusercontent.com/u/9599?v=4",
     },
+    "3": {"id": "3", "username": "readonly", "name": "I can read only"},
 }
 
 

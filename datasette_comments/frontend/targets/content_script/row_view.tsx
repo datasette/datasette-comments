@@ -9,6 +9,7 @@ function RowViewComments(props: {
   database: string;
   table: string;
   rowids: string;
+  readonly_viewer: boolean;
 }) {
   const { row_threads, author, database, table, rowids } = props;
   const [startThread, setStartThread] = useState<boolean>(false);
@@ -21,6 +22,7 @@ function RowViewComments(props: {
           initialId={d}
           author={author}
           target={{ type: "row", database, table, rowids }}
+          readonly_viewer={props.readonly_viewer}
         />
       ))}
       {startThread && (
@@ -28,6 +30,7 @@ function RowViewComments(props: {
           initialId={null}
           author={author}
           target={{ type: "row", database, table, rowids }}
+          readonly_viewer={props.readonly_viewer}
         />
       )}
       {!startThread && row_threads.length === 0 && (
@@ -43,7 +46,8 @@ function RowViewComments(props: {
 export async function attachRowView(
   database: string,
   table: string,
-  author: Author
+  author: Author,
+  readonly_viewer: boolean
 ) {
   const rowids = window.location.pathname.split("/").pop();
   const threads = await Api.rowViewThreads(database, table, rowids);
@@ -58,6 +62,7 @@ export async function attachRowView(
       database={database}
       table={table}
       rowids={rowids}
+      readonly_viewer={readonly_viewer}
     />,
     target
   );

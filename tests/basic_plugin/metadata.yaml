@@ -1,6 +1,8 @@
 permissions:
   datasette-comments-access:
     id: ["1", "2"]
+  datasette-comments-readonly:
+    id: ["3"]
 plugins:
   datasette-comments:
     enable_gravatar: true

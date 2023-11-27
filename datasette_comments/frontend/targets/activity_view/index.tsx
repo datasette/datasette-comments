@@ -1,4 +1,3 @@
-//import "../../static/style.css";
 import "./activity_view.css";
 import { h, render } from "preact";
 import { DEFAULT_PROFILE_PICTURE } from "../../components/Thread";
@@ -239,6 +238,7 @@ function ActivitySearch() {
     </div>
   );
 }
+
 function ActivityView() {
   const [showFilters, setShowFilters] = useState<boolean>(hasInitialUrlParams);
   const [data, dispatch] = useReducer<

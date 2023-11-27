@@ -26,6 +26,7 @@ function main() {
     database?: string;
     table?: string;
     author: Author;
+    readonly_viewer: boolean;
   };
 
   switch (CONFIG.view_name) {
@@ -37,10 +38,20 @@ function main() {
       break;
     case "table":
       if (CONFIG.database && CONFIG.table)
-        attachTableView(CONFIG.database!, CONFIG.table!, CONFIG.author);
+        attachTableView(
+          CONFIG.database!,
+          CONFIG.table!,
+          CONFIG.author,
+          CONFIG.readonly_viewer
+        );
       break;
     case "row":
-      attachRowView(CONFIG.database!, CONFIG.table!, CONFIG.author);
+      attachRowView(
+        CONFIG.database!,
+        CONFIG.table!,
+        CONFIG.author,
+        CONFIG.readonly_viewer
+      );
       break;
   }
 }

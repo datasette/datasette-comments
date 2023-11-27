@@ -13,8 +13,9 @@ function ThreadPopup(props: {
   marked_resolved: boolean;
   author: Author;
   onNewThread: (id: string) => void;
+  readonly_viewer: boolean;
 }) {
-  const { attachTo } = props;
+  const { attachTo, readonly_viewer } = props;
   const [show, setShow] = useState<boolean>(true);
 
   // handle opening/showing thread on clicking out + escape keypress
@@ -87,6 +88,7 @@ function ThreadPopup(props: {
             initialId={props.initialId}
             author={props.author}
             onNewThread={onNewThread}
+            readonly_viewer={readonly_viewer}
           />
         )}
       </div>
@@ -131,7 +133,8 @@ function tableViewExtractRowIds(): TableRow[] {
 export async function attachTableView(
   database: string,
   table: string,
-  author: Author
+  author: Author,
+  readonly_viewer: boolean
 ) {
   const THREAD_ROOT = document.body.appendChild(document.createElement("div"));
   const rowids = tableViewExtractRowIds();
@@ -148,6 +151,8 @@ export async function attachTableView(
   );
 
   /* step 1: table comments */
+  // Skipping table comments for now, it's a bit awkward
+  /*
   addCommentIcon(
     document.querySelector("h1"),
     response.data.table_threads.length > 0,
@@ -169,13 +174,14 @@ export async function attachTableView(
       );
     }
   );
+  */
 
   /* step 2: column comments */
 
   /* step 3: row comments */
 
   for (const { tdElement, pkEncoded } of rowids) {
-    let thread_id = rowThreadLookup.get(pkEncoded) ?? null;
+    let thread_id: string | null = rowThreadLookup.get(pkEncoded);
     tdElement.style.position = "relative";
     const span = document.createElement("span");
     Object.assign(span.style, { position: "absolute", bottom: 0, right: 0 });
@@ -214,7 +220,6 @@ export async function attachTableView(
     button.addEventListener("click", () => {
       // clear out any pre-existing preact components
       render(null, THREAD_ROOT);
-
       render(
         <ThreadPopup
           attachTo={tdElement}
@@ -234,10 +239,16 @@ export async function attachTableView(
             button.style.display = "block";
             if (cancel) cancel();
           }}
+          readonly_viewer={readonly_viewer}
         />,
         THREAD_ROOT
       );
     });
+
+    if (!thread_id && readonly_viewer) {
+      console.log(thread_id);
+      continue;
+    }
     span.appendChild(button);
     tdElement.appendChild(span);
   }
