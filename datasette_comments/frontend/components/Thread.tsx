@@ -406,7 +406,8 @@ export function Thread(props: ThreadProps) {
 
   function onNewComment(contents: string) {
     if (props.readonly_viewer) return;
-    if (id === null) {
+    // TODO: why is id sometimes undefined ?
+    if (!id) {
       Api.threadNew(props.target, contents).then(({ thread_id }) => {
         setId(thread_id);
         if (props.onNewThread) props.onNewThread(thread_id);
