@@ -383,7 +383,6 @@ class Routes:
         table = data.get("table")
         rowids_encoded: str = data.get("rowids")
         rowids = [tilde_decode(b) for b in rowids_encoded.split(",")]
-        print(database, table, rowids, json.dumps(rowids))
 
         response = await datasette.get_internal_database().execute(
             """

@@ -44,6 +44,10 @@
     &:hover {
       fill: #333;
     }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
   }
 }
 
@@ -78,6 +82,10 @@
     padding: 4px;
     resize: none;
     font-size: 16px;
+
+    &:disabled {
+      cursor: not-allowed;
+    }
   }
 
   & .draft-add-button {
@@ -88,6 +96,7 @@
 
     &:disabled {
       background: #888;
+      cursor: not-allowed;
     }
   }
 
@@ -144,6 +153,10 @@
     background: none;
     border: 1px solid #999;
     border-radius: 1rem;
+
+    &:disabled {
+      cursor: not-allowed;
+    }
   }
 
   & .datasette-comments-add-reaction {

@@ -264,10 +264,30 @@ function Draft(props: {
   const { profile_photo_url } = useContext<Author>(AuthorContext);
   const [value, setValue] = useState<string>("");
   const [suggestions, setSuggestions] = useState<Author[]>([]);
+  function onInput(e) {
+    const target = e.target as HTMLTextAreaElement;
+    setValue(target.value);
+
+    // resize textarea on new lines
+    target.style.height = "";
+    target.style.height = target.scrollHeight + "px";
+
+    const x = autocompleteOptions(target);
+    if (x) {
+      if (x.type === "mention") {
+        Api.autocomplete_mentions(x.prefix).then((data) => {
+          setSuggestions(data.suggestions.map((d) => d.author));
+        });
+      }
+    } else {
+      setSuggestions([]);
+    }
+  }
   function onAddComment() {
     props.onSubmitted(value);
     setValue("");
   }
+
   // On mount, focus the textarea if props.autoFocus is set.
   // The autofocus=True HTML attribute wasn't working correctly, so doing manually
   useEffect(() => {
@@ -289,25 +309,12 @@ function Draft(props: {
           <div>
             <textarea
               ref={inputRef}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                setValue(target.value);
-
-                // resize textarea on new lines
-                target.style.height = "";
-                target.style.height = target.scrollHeight + "px";
-
-                const x = autocompleteOptions(target);
-                if (x) {
-                  if (x.type === "mention") {
-                    Api.autocomplete_mentions(x.prefix).then((data) => {
-                      setSuggestions(data.suggestions.map((d) => d.author));
-                    });
-                  }
-                } else {
-                  setSuggestions([]);
-                }
-              }}
+              title={
+                props.readonly_viewer
+                  ? "You don't have permissions to leave comments"
+                  : null
+              }
+              onInput={onInput}
               value={value}
               style="width: calc(100% - 1rem); font-size: 16px;"
               disabled={props.readonly_viewer}
