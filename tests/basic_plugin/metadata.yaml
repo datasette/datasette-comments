@@ -3,6 +3,7 @@ permissions:
     id: ["1", "2"]
   datasette-comments-readonly:
     id: ["3"]
+    unauthenticated: true
 plugins:
   datasette-comments:
     enable_gravatar: true

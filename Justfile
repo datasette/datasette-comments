@@ -6,6 +6,7 @@ js:
     --out-extension:.js=.min.js \
     --out-extension:.css=.min.css \
     datasette_comments/frontend/targets/**/index.tsx \
+    --target=safari12 \
     --outdir=datasette_comments/static
 
 dev:
