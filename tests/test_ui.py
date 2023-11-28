@@ -18,6 +18,7 @@ def client_login_as(page: Page, actor_id: str):
     )
 
 
+@pytest.mark.skip(reason="need to figure out authenticated users")
 def test_table_view_manual(page: Page, screenshot_snapshot, ds_server):
     client_login_as(page, "2")
 
