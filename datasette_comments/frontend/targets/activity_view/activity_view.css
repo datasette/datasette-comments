@@ -2,6 +2,8 @@
   max-width: 600px;
   margin: 0 auto;
   padding-top: 2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
   & .header {
     display: flex;

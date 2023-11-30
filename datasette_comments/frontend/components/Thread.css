@@ -101,7 +101,6 @@
   }
 
   & .draft-bottom-drawer {
-    padding: 0.5rem 0;
     display: flex;
 
     & div {
@@ -136,6 +135,10 @@
     left: 4px;
     color: white;
     width: 320px;
+
+    & button {
+      margin-right: 0.25rem;
+    }
   }
 
   & .other-reactions {

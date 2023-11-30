@@ -1,4 +1,4 @@
-import { h, render } from "preact";
+import { Fragment, h, render } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { Api, Author, CommentTargetType } from "../../api";
 import { Thread } from "../../components/Thread";
@@ -49,12 +49,13 @@ function ThreadPopup(props: {
   // add border style to the target, when shown
   useEffect(() => {
     if (show) {
-      props.attachTo.style.border = "1px solid red";
+      props.attachTo.parentElement.style.boxShadow =
+        "#edb61f 0px 0px 4px 1px inset";
     } else {
-      props.attachTo.style.border = "";
+      props.attachTo.style.boxShadow = "";
     }
     return () => {
-      props.attachTo.style.border = "";
+      props.attachTo.parentElement.style.boxShadow = "";
     };
   }, [props.attachTo, show]);
 
@@ -70,7 +71,7 @@ function ThreadPopup(props: {
     transform = `translate(20px, ${rect.top + window.scrollY + 40}px)`;
   } else {
     transform = `translate(${rect.left + attachTo.offsetWidth + 10}px, ${
-      rect.top + window.scrollY
+      rect.top + rect.height + 4 + window.scrollY
     }px`;
   }
   return (
@@ -184,7 +185,7 @@ export async function attachTableView(
     let thread_id: string | null = rowThreadLookup.get(pkEncoded);
     tdElement.style.position = "relative";
     const span = document.createElement("span");
-    Object.assign(span.style, { position: "absolute", bottom: 0, right: 0 });
+    Object.assign(span.style, { position: "absolute", top: 2, right: 0 });
     const button = document.createElement("button");
     Object.assign(button.style, {
       background: "none",
@@ -216,6 +217,11 @@ export async function attachTableView(
     (button.querySelector("svg") as SVGElement).width = 16;
     // @ts-ignore
     (button.querySelector("svg") as SVGElement).height = 16;
+    // @ts-ignore
+    (button.querySelector("svg") as SVGElement).style.backgroundColor =
+      "#f8fafb";
+    // @ts-ignore
+    (button.querySelector("svg") as SVGElement).style.opacity = 0.8;
 
     button.addEventListener("click", () => {
       // clear out any pre-existing preact components
@@ -246,7 +252,6 @@ export async function attachTableView(
     });
 
     if (!thread_id && readonly_viewer) {
-      console.log(thread_id);
       continue;
     }
     span.appendChild(button);

@@ -114,14 +114,17 @@ function ReactionSection(props: {
           </button>
         </div>
       ))}
-      <div>
-        <button
-          class="datasette-comments-add-reaction"
-          dangerouslySetInnerHTML={{ __html: ICONS.ADD_REACTION }}
-          onClick={onClickAddReaction}
-          disabled={props.readonly_viewer}
-        ></button>
-      </div>
+      {props.readonly_viewer ? null : (
+        <div>
+          <button
+            class="datasette-comments-add-reaction"
+            dangerouslySetInnerHTML={{ __html: ICONS.ADD_REACTION }}
+            onClick={onClickAddReaction}
+            disabled={props.readonly_viewer}
+          ></button>
+        </div>
+      )}
+
       <div style="position:relative">
         {showReactionPopup && (
           <div className="popup">
@@ -174,7 +177,13 @@ function Comment(props: { comment: CommentData; readonly_viewer: boolean }) {
         </div>
       </div>
 
-      <div style={{ margin: ".25rem .5rem" }}>
+      <div
+        style={{
+          margin: ".25rem .5rem",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
         {comment.render_nodes.map((node) => {
           switch (node.node_type) {
             case "linebreak":
@@ -243,7 +252,10 @@ function MentionSuggestion(props: {
 }) {
   return (
     <div
-      onClick={() => props.onSelect(props.author)}
+      onClick={(e) => {
+        e.stopPropagation();
+        props.onSelect(props.author);
+      }}
       className="mention-suggestion"
     >
       <img
@@ -258,7 +270,6 @@ function MentionSuggestion(props: {
 function Draft(props: {
   onSubmitted: (contents: string) => void;
   autoFocus: boolean;
-  readonly_viewer: boolean;
 }) {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const { profile_photo_url } = useContext<Author>(AuthorContext);
@@ -309,15 +320,9 @@ function Draft(props: {
           <div>
             <textarea
               ref={inputRef}
-              title={
-                props.readonly_viewer
-                  ? "You don't have permissions to leave comments"
-                  : null
-              }
               onInput={onInput}
               value={value}
-              style="width: calc(100% - 1rem); font-size: 16px;"
-              disabled={props.readonly_viewer}
+              style="width: calc(100% - 8px); font-size: 16px;"
             ></textarea>
           </div>
           <div>
@@ -358,11 +363,7 @@ function Draft(props: {
       </div>
       <div class="draft-bottom-drawer">
         <div>
-          <button
-            class="draft-add-button"
-            onClick={onAddComment}
-            disabled={value === "" || props.readonly_viewer}
-          >
+          <button class="draft-add-button" onClick={onAddComment}>
             Add comment
           </button>
         </div>
@@ -443,11 +444,10 @@ export function Thread(props: ThreadProps) {
     <AuthorContext.Provider value={props.author}>
       <div className="datasette-comments-thread">
         <div className="datasette-comments-thread-meta">
-          {id !== null && (
+          {id && !props.readonly_viewer && (
             <button
               class="mark-resolved-button"
               onClick={() => onMarkAsResolved()}
-              disabled={props.readonly_viewer}
             >
               <span
                 dangerouslySetInnerHTML={{ __html: ICONS.CHECK_CIRCLE }}
@@ -470,11 +470,9 @@ export function Thread(props: ThreadProps) {
           )}
         </div>
         <div>
-          <Draft
-            onSubmitted={onNewComment}
-            autoFocus={props.initialId === null}
-            readonly_viewer={props.readonly_viewer}
-          />
+          {props.readonly_viewer ? null : (
+            <Draft onSubmitted={onNewComment} autoFocus={!props.initialId} />
+          )}
         </div>
       </div>
     </AuthorContext.Provider>
