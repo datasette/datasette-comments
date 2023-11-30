@@ -1,9 +1,21 @@
 import { Fragment, h, render } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { Api, Author, CommentTargetType } from "../../api";
 import { Thread } from "../../components/Thread";
 import { ICONS } from "../../icons";
 let THREAD_ROOT: HTMLElement;
+
+// source: https://gist.github.com/jjmu15/8646226
+function isInViewport(element: HTMLElement) {
+  var rect = element.getBoundingClientRect();
+  var html = document.documentElement;
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= (window.innerHeight || html.clientHeight) &&
+    rect.right <= (window.innerWidth || html.clientWidth)
+  );
+}
 
 // a wrapper around <Thread/> to make it appear next to elements in the page
 function ThreadPopup(props: {
@@ -17,6 +29,7 @@ function ThreadPopup(props: {
 }) {
   const { attachTo, readonly_viewer } = props;
   const [show, setShow] = useState<boolean>(true);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   // handle opening/showing thread on clicking out + escape keypress
   useEffect(() => {
@@ -51,13 +64,16 @@ function ThreadPopup(props: {
     if (show) {
       props.attachTo.parentElement.style.boxShadow =
         "#edb61f 0px 0px 4px 1px inset";
+      if (popupRef.current && !isInViewport(popupRef.current)) {
+        popupRef.current.scrollIntoView({ behavior: "smooth" });
+      }
     } else {
       props.attachTo.style.boxShadow = "";
     }
     return () => {
       props.attachTo.parentElement.style.boxShadow = "";
     };
-  }, [props.attachTo, show]);
+  }, [props.attachTo, show, popupRef]);
 
   async function onNewThread(thread_id: string) {
     props.onNewThread(thread_id);
@@ -77,6 +93,7 @@ function ThreadPopup(props: {
   return (
     <div className="datasette-comments-thread-popup">
       <div
+        ref={popupRef}
         style={{
           position: "absolute",
           inset: "0px auto auto 0px",
