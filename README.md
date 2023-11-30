@@ -5,7 +5,9 @@
 [![Tests](https://github.com/datasette/datasette-comments/workflows/Test/badge.svg)](https://github.com/datasette/datasette-comments/actions?query=workflow%3ATest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/datasette/datasette-comments/blob/main/LICENSE)
 
-A Datasette plugin for commenting on tables, rows, and values. Work in progress, not ready yet!
+A Datasette plugin for commenting on tables, rows, and values.
+
+Read [Annotate and explore your data with datasette-comments](https://www.datasette.cloud/blog/2023/datasette-comments/) for background on this project.
 
 ## Installation
 
