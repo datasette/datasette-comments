@@ -160,7 +160,7 @@ async def datasette_with_plugin():
     try:
         yield Datasette(
             memory=True,
-            metadata={"permissions": {"datasette-comments-access": {"id": ["alex"]}}},
+            config={"permissions": {"datasette-comments-access": {"id": ["alex"]}}},
             pdb=True,
         )
     finally:

@@ -20,7 +20,7 @@ def cookie_for_actor(datasette, actor_id):
 async def test_permissions():
     datasette = Datasette(
         memory=True,
-        metadata={"permissions": {"datasette-comments-access": {"id": ["alex"]}}},
+        config={"permissions": {"datasette-comments-access": {"id": ["alex"]}}},
     )
 
     response = await datasette.client.post(
@@ -31,7 +31,7 @@ async def test_permissions():
     assert response.status_code == 200
 
     thread_id = response.json()["thread_id"]
-    assert ULID.from_str(thread_id) is not None
+    assert ULID.from_str(thread_id.upper()) is not None
 
     response = await datasette.client.post(
         "/-/datasette-comments/api/thread/new",
@@ -45,7 +45,7 @@ async def test_permissions():
 async def test_readonly_permissions():
     datasette = Datasette(
         memory=True,
-        metadata={
+        config={
             "permissions": {
                 "datasette-comments-access": {"id": ["alex"]},
                 "datasette-comments-readonly": {"id": ["readonly"]},
@@ -62,7 +62,7 @@ async def test_readonly_permissions():
     assert response.status_code == 200
 
     thread_id = response.json()["thread_id"]
-    assert ULID.from_str(thread_id) is not None
+    assert ULID.from_str(thread_id.upper()) is not None
 
     # readonly user cannot create a new thread
     response = await datasette.client.post(
