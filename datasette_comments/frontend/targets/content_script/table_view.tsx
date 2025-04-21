@@ -200,9 +200,11 @@ export async function attachTableView(
 
   for (const { tdElement, pkEncoded } of rowids) {
     let thread_id: string | null = rowThreadLookup.get(pkEncoded);
-    tdElement.style.position = "relative";
+    Object.assign(tdElement.style, {
+      "white-space": "nowrap",
+      "display": "inline-flex"
+    });
     const span = document.createElement("span");
-    Object.assign(span.style, { position: "absolute", top: 2, right: 0 });
     const button = document.createElement("button");
     Object.assign(button.style, {
       background: "none",
