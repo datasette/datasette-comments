@@ -377,6 +377,7 @@ export interface ThreadProps {
   author: Author;
   target: CommentTargetType;
   onNewThread?: (thread_id: string) => void;
+  onResolvedThread?: () => void;
   readonly_viewer: boolean;
 }
 
@@ -434,7 +435,7 @@ export function Thread(props: ThreadProps) {
     if (confirmed) {
       Api.threadMarkResolved(id)
         .then(() => {
-          // TODO show message?
+          if (props.onResolvedThread) props.onResolvedThread();
         })
         .catch(() => {});
     }

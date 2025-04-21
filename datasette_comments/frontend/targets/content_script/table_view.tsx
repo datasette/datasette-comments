@@ -25,6 +25,7 @@ function ThreadPopup(props: {
   marked_resolved: boolean;
   author: Author;
   onNewThread: (id: string) => void;
+  onResolvedThread: () => void;
   readonly_viewer: boolean;
 }) {
   const { attachTo, readonly_viewer } = props;
@@ -79,6 +80,11 @@ function ThreadPopup(props: {
     props.onNewThread(thread_id);
     return;
   }
+  async function onResolvedThread() {
+    props.onResolvedThread();
+    setShow(false);
+    return;
+  }
 
   const rect = attachTo.getBoundingClientRect();
   let transform;
@@ -86,9 +92,8 @@ function ThreadPopup(props: {
     // Mobile
     transform = `translate(20px, ${rect.top + window.scrollY + 40}px)`;
   } else {
-    transform = `translate(${rect.left + attachTo.offsetWidth + 10}px, ${
-      rect.top + rect.height + 4 + window.scrollY
-    }px`;
+    transform = `translate(${rect.left + attachTo.offsetWidth + 10}px, ${rect.top + rect.height + 4 + window.scrollY
+      }px`;
   }
   return (
     <div className="datasette-comments-thread-popup">
@@ -106,6 +111,7 @@ function ThreadPopup(props: {
             initialId={props.initialId}
             author={props.author}
             onNewThread={onNewThread}
+            onResolvedThread={onResolvedThread}
             readonly_viewer={readonly_viewer}
           />
         )}
@@ -154,6 +160,21 @@ export async function attachTableView(
   author: Author,
   readonly_viewer: boolean
 ) {
+
+  document.head.appendChild(
+    Object.assign(document.createElement("style"), {
+      textContent: `
+      .datasette-comments-thread-button {
+        opacity: 0.0
+      }
+      .datasette-comments-thread-button.show {
+        opacity: 1;
+      }
+      .datasette-comments-thread-button:hover {
+        opacity: 0.8;
+      }
+      `}));
+
   const THREAD_ROOT = document.body.appendChild(document.createElement("div"));
   const rowids = tableViewExtractRowIds();
   const response = await Api.tableViewThreads(
@@ -200,10 +221,19 @@ export async function attachTableView(
 
   for (const { tdElement, pkEncoded } of rowids) {
     let thread_id: string | null = rowThreadLookup.get(pkEncoded);
-    Object.assign(tdElement.style, {
+
+    const div = document.createElement("div");
+    Object.assign(div.style, {
       "white-space": "nowrap",
-      "display": "inline-flex"
+      "display": "flex"
     });
+    
+    // Move primary key <a> element into new inner <div> for easier styling
+    while (tdElement.firstChild) {
+      div.appendChild(tdElement.firstChild);
+    }
+    
+
     const span = document.createElement("span");
     const button = document.createElement("button");
     Object.assign(button.style, {
@@ -211,24 +241,12 @@ export async function attachTableView(
       border: "none",
       cursor: "pointer",
     });
+    button.classList.add("datasette-comments-thread-button");
     // cancels the mouseenter/leave event listeners when a new thread is started
     let cancel: () => void | null = null;
 
-    if (!thread_id) {
-      button.style.display = "none";
-
-      function mouseenter() {
-        button.style.display = "block";
-      }
-      function mouseleave() {
-        button.style.display = "none";
-      }
-      tdElement.addEventListener("mouseenter", mouseenter);
-      tdElement.addEventListener("mouseleave", mouseleave);
-      cancel = () => {
-        tdElement.removeEventListener("mouseenter", mouseenter);
-        tdElement.removeEventListener("mouseleave", mouseleave);
-      };
+    if (thread_id) {
+      button.classList.add("show");
     }
 
     button.innerHTML = thread_id ? ICONS.COMMENT : ICONS.COMMENT_ADD;
@@ -236,11 +254,6 @@ export async function attachTableView(
     (button.querySelector("svg") as SVGElement).width = 16;
     // @ts-ignore
     (button.querySelector("svg") as SVGElement).height = 16;
-    // @ts-ignore
-    (button.querySelector("svg") as SVGElement).style.backgroundColor =
-      "#f8fafb";
-    // @ts-ignore
-    (button.querySelector("svg") as SVGElement).style.opacity = 0.8;
 
     button.addEventListener("click", () => {
       // clear out any pre-existing preact components
@@ -261,7 +274,14 @@ export async function attachTableView(
             // when a new thread is created, changed the row button to the "comment" icon, from the "new comment" icon
             thread_id = id;
             button.innerHTML = ICONS.COMMENT;
-            button.style.display = "block";
+            button.classList.add("show");
+            if (cancel) cancel();
+          }}
+          onResolvedThread={() => {
+            // when a thread is resolved, remove the button
+            thread_id = null;
+            button.innerHTML = ICONS.COMMENT_ADD;
+            button.classList.remove("show");
             if (cancel) cancel();
           }}
           readonly_viewer={readonly_viewer}
@@ -274,7 +294,8 @@ export async function attachTableView(
       continue;
     }
     span.appendChild(button);
-    tdElement.appendChild(span);
+    div.appendChild(span);
+    tdElement.appendChild(div);
   }
 
   /* step 4: value comments */
