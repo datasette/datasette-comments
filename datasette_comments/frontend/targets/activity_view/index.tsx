@@ -211,7 +211,7 @@ function ActivitySearch() {
             onKeyDown={(e) => e.key === "Enter" && onSubmit()}
             onInput={(e) => setTags((e.target as HTMLInputElement).value)}
           />
-          <div class="help">Seperate tags with commas</div>
+          <div class="help">Separate tags with commas</div>
         </div>
       </div>
       <div className="activity-search-field">
