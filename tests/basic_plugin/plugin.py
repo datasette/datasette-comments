@@ -1,5 +1,6 @@
 from datasette import hookimpl
-
+from datasette.utils.permissions import PluginSQL
+from datasette_comments import ADD_COMMENTS_ACTION, VIEW_COMMENTS_ACTION
 actors = {
     "1": {
         "id": "1",
@@ -18,7 +19,16 @@ actors = {
     "3": {"id": "3", "username": "readonly", "name": "I can read only"},
 }
 
+ACL_LITE_SCHEMA = """
+CREATE TABLE all
+"""
 
+
+@hookimpl
+def startup(datasette):
+    internal_db = datasette.get_internal_database()
+    print(internal_db)
+    
 @hookimpl
 def actor_from_request(datasette, request):
     actor_id = request.cookies.get("actor")
@@ -43,3 +53,24 @@ def datasette_comments_users():
         return list(actors.values())
 
     return inner
+
+
+@hookimpl
+def permission_resources_sql(datasette, actor, action):
+    print(actor)
+    if action != VIEW_COMMENTS_ACTION.name:
+        return None
+    if not actor:# or actor.get("id") != "root":
+        return None
+
+    return PluginSQL(
+        source="all_allow",
+        sql="""
+            SELECT
+                'tmp'                      AS parent,
+                't'                        AS child,
+                1                          AS allow,
+                'anyone can view comments' AS reason
+        """,
+        params={},
+    )

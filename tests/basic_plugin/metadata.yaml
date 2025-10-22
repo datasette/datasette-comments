@@ -1,6 +1,6 @@
 permissions:
   datasette-comments-access:
-    id: ["1", "2"]
+    id: ["1", "2", "root"]
   datasette-comments-readonly:
     id: ["3"]
     unauthenticated: true

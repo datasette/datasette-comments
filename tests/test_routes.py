@@ -1,0 +1,308 @@
+import pytest
+from datasette_comments.contract import ApiThreadNewResponse
+
+
+def cookie_for_actor(datasette, actor_id):
+    return {"ds_actor": datasette.sign({"a": {"id": actor_id}}, "actor")}
+
+
+@pytest.mark.asyncio
+async def test_routes_thread_comments(datasette_with_plugin):
+    response = await datasette_with_plugin.client.post(
+        "/-/datasette-comments/api/thread/new",
+        json={"type": "database", "database": "foo", "comment": "lol #yo"},
+        cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+    )
+    assert response.status_code == 200
+    assert ApiThreadNewResponse.model_validate(response.json())
+
+    thread_id = response.json()["thread_id"]
+    response = await datasette_with_plugin.client.get(
+        "/-/datasette-comments/api/thread/comments/" + thread_id,
+        cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+    )
+    # TODO
+
+
+class TestApiThreadNew:
+    """Test the api/thread/new endpoint"""
+
+    @pytest.mark.asyncio
+    async def test_method_not_post_returns_405(self, datasette_with_plugin):
+        """Test that non-POST methods return 405"""
+        response = await datasette_with_plugin.client.get(
+            "/-/datasette-comments/api/thread/new",
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 405
+
+    @pytest.mark.asyncio
+    async def test_database_type_valid(self, datasette_with_plugin):
+        """Test creating a thread on a database"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "database",
+                "database": "test_db",
+                "comment": "Database comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+        assert "thread_id" in data
+        assert ApiThreadNewResponse.model_validate(data)
+
+    @pytest.mark.asyncio
+    async def test_database_type_missing_database(self, datasette_with_plugin):
+        """Test database type without database field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={"type": "database", "comment": "Comment"},
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+        assert "database requires 'database' field" in response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_table_type_valid(self, datasette_with_plugin):
+        """Test creating a thread on a table"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "table",
+                "database": "test_db",
+                "table": "users",
+                "comment": "Table comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+        assert "thread_id" in data
+
+    @pytest.mark.asyncio
+    async def test_table_type_missing_table(self, datasette_with_plugin):
+        """Test table type without table field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={"type": "table", "database": "test_db", "comment": "Comment"},
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+        assert "'database' and 'table' fields" in response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_row_type_valid(self, datasette_with_plugin):
+        """Test creating a thread on a row"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "row",
+                "database": "test_db",
+                "table": "users",
+                "rowids": "1",
+                "comment": "Row comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+        assert "thread_id" in data
+
+    @pytest.mark.asyncio
+    async def test_row_type_compound_primary_key(self, datasette_with_plugin):
+        """Test creating a thread on a row with compound primary key"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "row",
+                "database": "test_db",
+                "table": "compound",
+                "rowids": "1,abc~2Fdef",
+                "comment": "Compound key row comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_row_type_missing_rowids(self, datasette_with_plugin):
+        """Test row type without rowids field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "row",
+                "database": "test_db",
+                "table": "users",
+                "comment": "Comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+        # Pydantic returns "Field required" error which gets mapped
+        assert response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_column_type_missing_column(self, datasette_with_plugin):
+        """Test column type without column field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "column",
+                "database": "test_db",
+                "table": "users",
+                "comment": "Comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+        # Pydantic validation will catch the missing column field
+        assert response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_value_type_missing_column(self, datasette_with_plugin):
+        """Test value type without column field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "value",
+                "database": "test_db",
+                "table": "users",
+                "rowids": "1",
+                "comment": "Comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+        # Pydantic validation will catch the missing column field
+        assert response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_value_type_missing_rowids(self, datasette_with_plugin):
+        """Test value type without rowids field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "value",
+                "database": "test_db",
+                "table": "users",
+                "column": "email",
+                "comment": "Comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+        # Pydantic validation will catch the missing rowids field
+        assert response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_invalid_type(self, datasette_with_plugin):
+        """Test that invalid type value returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "invalid_type",
+                "database": "test_db",
+                "comment": "Comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_missing_comment_field(self, datasette_with_plugin):
+        """Test that missing comment field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={"type": "database", "database": "test_db"},
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_missing_type_field(self, datasette_with_plugin):
+        """Test that missing type field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={"database": "test_db", "comment": "Comment"},
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_extra_fields_ignored(self, datasette_with_plugin):
+        """Test that extra fields are ignored and don't cause errors"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "database",
+                "database": "test_db",
+                "comment": "Comment",
+                "extra_field": "should be ignored",
+                "another_extra": 123,
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_comment_with_hashtags(self, datasette_with_plugin):
+        """Test creating a thread with hashtags in the comment"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "database",
+                "database": "test_db",
+                "comment": "This is a comment with #hashtag and #another_tag",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_comment_with_mentions(self, datasette_with_plugin):
+        """Test creating a thread with mentions in the comment"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "table",
+                "database": "test_db",
+                "table": "users",
+                "comment": "Hey @alice and @bob, check this out!",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_response_structure(self, datasette_with_plugin):
+        """Test that the response has the correct structure"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "database",
+                "database": "test_db",
+                "comment": "Test comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Validate with Pydantic model
+        validated = ApiThreadNewResponse.model_validate(data)
+        assert validated.ok is True
+        assert isinstance(validated.thread_id, str)
+        assert len(validated.thread_id) > 0
