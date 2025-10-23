@@ -300,7 +300,7 @@ class TestApiThreadNew:
         )
         assert response.status_code == 200
         data = response.json()
-        
+
         # Validate with Pydantic model
         validated = ApiThreadNewResponse.model_validate(data)
         assert validated.ok is True
@@ -374,12 +374,12 @@ class TestApiCommentNew:
         """Test that invalid JSON returns 400"""
         response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/comment/add",
-            data="not valid json",
+            content="not valid json",
             headers={"Content-Type": "application/json"},
             cookies=cookie_for_actor(datasette_with_plugin, "alex"),
         )
         assert response.status_code == 400
-    
+
     @pytest.mark.asyncio
     async def test_multiple_comments_on_same_thread(self, datasette_with_plugin):
         """Test adding multiple comments to the same thread"""

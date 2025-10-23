@@ -7,13 +7,13 @@ import pytest
 import pytest_asyncio
 from syrupy.extensions.image import PNGImageSnapshotExtension
 from sys import executable
-from datasette_comments import SCHEMA
 import tempfile
 import sqlite3
+import sqlite_utils
 from pathlib import Path
 import time
 import httpx
-
+from datasette_comments.internal_migrations import internal_migrations
 
 FIXTURES_SQL = (Path(__file__).parent / "comments-fixtures.sql").read_text()
 INTERNAL_FIXTURES_SQL = (
@@ -33,13 +33,13 @@ actors = {{
         "id": "1",
         "username": "asg017",
         "name": "Alex Garcia",
-        "profile_picture_url": "{profile_pic('red')}",
+        "profile_picture_url": "{profile_pic("red")}",
     }},
     "2": {{
         "id": "2",
         "username": "simonw",
         "name": "Simon Willison",
-        "profile_picture_url": "{profile_pic('blue')}",
+        "profile_picture_url": "{profile_pic("blue")}",
     }},
 }}
 
@@ -81,7 +81,7 @@ def ds_server(request):
     metadata_path = Path(tmpdir.name) / "metadata.json"
 
     internal_db = sqlite3.connect(internal_db_path)
-    internal_db.executescript(SCHEMA)
+    internal_migrations.apply(sqlite_utils.Database(internal_db))
     internal_db.executescript(INTERNAL_FIXTURES_SQL)
     internal_db.close()
 

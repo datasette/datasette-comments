@@ -2,8 +2,10 @@ from datasette.app import Datasette
 import pytest
 from ulid import ULID
 
+
 def cookie_for_actor(datasette, actor_id):
     return {"ds_actor": datasette.sign({"a": {"id": actor_id}}, "actor")}
+
 
 @pytest.mark.asyncio
 async def test_plugin_is_installed():
@@ -12,6 +14,7 @@ async def test_plugin_is_installed():
     assert response.status_code == 200
     installed_plugins = {p["name"] for p in response.json()}
     assert "datasette-comments" in installed_plugins
+
 
 @pytest.mark.asyncio
 async def test_permissions():
@@ -136,4 +139,3 @@ async def test_autocomplete_mentions(datasette_with_plugin, prefix, expected):
     data = response.json()
     assert data == {"suggestions": expected}
     delattr(datasette_with_plugin, "_datasette_comments_users_accessed")
-

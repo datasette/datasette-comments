@@ -45,62 +45,47 @@ def test_parse():
         asdict(RenderNode("raw", " g")),
     ]
 
-    assert (
-        parse(
-            """first line
+    assert parse(
+        """first line
 second line"""
-        ).rendered
-        == [
-            asdict(RenderNode("raw", "first line")),
-            asdict(RenderNode("linebreak", "")),
-            asdict(RenderNode("raw", "second line")),
-        ]
-    )
-    assert (
-        parse(
-            """first line
+    ).rendered == [
+        asdict(RenderNode("raw", "first line")),
+        asdict(RenderNode("linebreak", "")),
+        asdict(RenderNode("raw", "second line")),
+    ]
+    assert parse(
+        """first line
 second line
 third line"""
-        ).rendered
-        == [
-            asdict(RenderNode("raw", "first line")),
-            asdict(RenderNode("linebreak", "")),
-            asdict(RenderNode("raw", "second line")),
-            asdict(RenderNode("linebreak", "")),
-            asdict(RenderNode("raw", "third line")),
-        ]
-    )
-    assert (
-        parse(
-            """
+    ).rendered == [
+        asdict(RenderNode("raw", "first line")),
+        asdict(RenderNode("linebreak", "")),
+        asdict(RenderNode("raw", "second line")),
+        asdict(RenderNode("linebreak", "")),
+        asdict(RenderNode("raw", "third line")),
+    ]
+    assert parse(
+        """
 first is empty"""
-        ).rendered
-        == [
-            # asdict(RenderNode("raw", "")),
-            asdict(RenderNode("linebreak", "")),
-            asdict(RenderNode("raw", "first is empty")),
-        ]
-    )
-    assert (
-        parse(
-            """ends on line
+    ).rendered == [
+        # asdict(RenderNode("raw", "")),
+        asdict(RenderNode("linebreak", "")),
+        asdict(RenderNode("raw", "first is empty")),
+    ]
+    assert parse(
+        """ends on line
 """
-        ).rendered
-        == [
-            asdict(RenderNode("raw", "ends on line")),
-            asdict(RenderNode("linebreak", "")),
-        ]
-    )
-    assert (
-        parse(
-            """
+    ).rendered == [
+        asdict(RenderNode("raw", "ends on line")),
+        asdict(RenderNode("linebreak", "")),
+    ]
+    assert parse(
+        """
 
 """
-        ).rendered
-        == [
-            asdict(RenderNode("linebreak", "")),
-            # TODO not sure if we can remove the need for this
-            asdict(RenderNode("raw", "\n")),
-            asdict(RenderNode("linebreak", "")),
-        ]
-    )
+    ).rendered == [
+        asdict(RenderNode("linebreak", "")),
+        # TODO not sure if we can remove the need for this
+        asdict(RenderNode("raw", "\n")),
+        asdict(RenderNode("linebreak", "")),
+    ]

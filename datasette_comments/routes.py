@@ -8,6 +8,7 @@ import hashlib
 import json
 from pydantic import TypeAdapter, ValidationError
 
+from datasette_comments.actions import VIEW_COMMENTS_ACTION
 from datasette_comments.internal_database import InternalDB
 from . import comment_parser
 from .contract import (
@@ -67,7 +68,7 @@ def author_from_actor(datasette, actors, actor_id) -> Author:
     if actor is None:
         return Author(actor_id=actor_id, name="", profile_photo_url=None, username=None)
 
-    name = actor.get("name")
+    name = actor.get("name") or ""
     profile_photo_url = actor.get("profile_picture_url")
     if profile_photo_url is None and enable_gravatar and actor.get("email"):
         profile_photo_url = gravtar_url(actor.get("email"))
@@ -91,42 +92,44 @@ async def author_from_request(datasette, request) -> Author:
     return await author_from_id(datasette, (request.actor or {}).get("id"))
 
 
-# Can access all datasette-comments features
-PERMISSION_ACCESS_NAME = "datasette-comments-access"
+async def actor_can_view_thread(datasette, actor, thread_id: str) -> bool:
+    """Check if the given actor can view the given thread"""
+    internal_db = InternalDB(datasette.get_internal_database())
+    thread = await internal_db.get_thread_by_id(thread_id)
 
-# Can ONLY read comments
-PERMISSION_READONLY_NAME = "datasette-comments-readonly"
-
-
-# decorator for routes, to ensure the proper permissions are checked
-def check_permission(write=False):
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(scope, receive, datasette, request):
-            if write:
-                result = await datasette.permission_allowed(
-                    request.actor, PERMISSION_ACCESS_NAME, default=False
-                )
-            else:
-                result = await datasette.permission_allowed(
-                    request.actor, PERMISSION_ACCESS_NAME, default=False
-                ) or await datasette.permission_allowed(
-                    request.actor, PERMISSION_READONLY_NAME, default=False
-                )
-            if not result:
-                raise Forbidden("Permission denied for datasette-comments")
-            return await func(scope, receive, datasette, request)
-
-        return wrapper
-
-    return decorator
+    allowed_actor_threads, params = await datasette.allowed_resources_sql(
+        actor=actor, action=VIEW_COMMENTS_ACTION.name
+    )
+    print(allowed_actor_threads)
+    sql = f"""
+    WITH actor_allowed_tables(database_name, table_name) AS (
+      {allowed_actor_threads}
+    )
+    SELECT 1
+    FROM actor_allowed_tables
+    WHERE database_name = :database_name
+      AND table_name = :table_name
+    LIMIT 1
+    """
+    params.update(
+        {
+            "database_name": thread.target_database,
+            "table_name": thread.target_table,
+        }
+    )
+    results = await datasette.get_internal_database().execute(sql, params)
+    return len(results.rows) > 0
 
 
 class Routes:
-    async def api_thread_comments(scope, receive, datasette, request):
+    @staticmethod
+    async def api_thread_comments(datasette, request):
         """Retrieves all comments for a given thread"""
         # TODO make sure actor can see the thread target (db, table, etc.)
         thread_id = request.url_vars["thread_id"]
+
+        if not await actor_can_view_thread(datasette, request.actor, thread_id):
+            raise Forbidden("Actor cannot view this thread")
 
         items: List[ApiThreadCommentsResponseItem] = []
         internal_db = InternalDB(datasette.get_internal_database())
@@ -155,7 +158,6 @@ class Routes:
             ).model_dump()
         )
 
-    @check_permission(write=True)
     async def thread_mark_resolved(scope, receive, datasette, request):
         """Mark a thread as 'resolved'"""
         if request.method != "POST":
@@ -178,7 +180,6 @@ class Routes:
 
         return Response.json({"ok": True})
 
-    # @check_permission(write=True)
     async def api_thread_new(scope, receive, datasette, request):
         """Create a new thread on a 'target'"""
         if request.method != "POST":
@@ -258,7 +259,6 @@ class Routes:
             ApiThreadNewResponse(ok=True, thread_id=thread_id).model_dump()
         )
 
-    # @check_permission(write=True)
     async def api_comment_new(scope, receive, datasette, request):
         """Add a comment to a pre-existing thread"""
         # TODO ensure actor has permission to view/comment the target
@@ -350,7 +350,6 @@ class Routes:
             }
         )
 
-    # @check_permission()
     async def row_view_threads(scope, receive, datasette, request):
         """Retrieve all threads for a row view"""
         # TODO ensure actor has permission to view the row
@@ -388,7 +387,6 @@ class Routes:
             }
         )
 
-    @check_permission()
     async def reactions(scope, receive, datasette, request):
         """Retrieve reactions data for a specific comment"""
         # TODO permissions
@@ -406,7 +404,6 @@ class Routes:
         )
         return Response.json([dict(row) for row in results.rows])
 
-    @check_permission(write=True)
     async def reaction_add(scope, receive, datasette, request):
         """Add a reaction to a specific comment"""
         # TODO permissions
@@ -449,7 +446,6 @@ class Routes:
         )
         return Response.json({"ok": True})
 
-    @check_permission(write=True)
     async def reaction_remove(scope, receive, datasette, request):
         """Remove a reaction"""
         # TODO permissions
@@ -482,7 +478,6 @@ class Routes:
         )
         return Response.json({"ok": True})
 
-    # @check_permission()
     async def activity_view(scope, receive, datasette, request):
         """The HTML Activity page view"""
         return Response.html(
@@ -492,7 +487,6 @@ class Routes:
             )
         )
 
-    @check_permission(write=True)
     async def autocomplete_mentions(scope, receive, datasette, request):
         """Return a list of users that can be at-mentioned, for a autcomplete list"""
         prefix = request.args.get("prefix")
@@ -511,7 +505,6 @@ class Routes:
                     )
         return Response.json({"suggestions": suggestions})
 
-    # @check_permission()
     async def activity_search(scope, receive, datasette, request):
         """Search endpoint for the acitivity page."""
         search_comments = request.args.get("searchComments")

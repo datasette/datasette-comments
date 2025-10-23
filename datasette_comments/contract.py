@@ -3,17 +3,21 @@ from typing import List, Union, Annotated, Literal, Optional
 
 from datasette_comments.comment_parser import RenderNode
 
+
 class ApiThreadNewResponse(BaseModel):
     ok: bool
     thread_id: str
+
 
 class ApiCommentNewParams(BaseModel):
     thread_id: str
     contents: str
 
+
 class Reaction(BaseModel):
     reactor_actor_id: str
     reaction: str
+
 
 class Author(BaseModel):
     # the actor.id value for the author
@@ -30,6 +34,7 @@ class Author(BaseModel):
     # the username is used for at-mentions. Should be unique to other actors
     username: Optional[str]
 
+
 class ApiThreadCommentsResponseItem(BaseModel):
     id: str
     author: Author
@@ -39,10 +44,12 @@ class ApiThreadCommentsResponseItem(BaseModel):
     render_nodes: List[RenderNode]
     reactions: List[dict]
 
+
 class ApiThreadCommentsResponse(BaseModel):
     ok: Literal[True]
     thread_id: str
     comments: List[ApiThreadCommentsResponseItem]
+
 
 # Subclasses for new thread parameters
 class _ApiThreadNewParamsBase(BaseModel):
@@ -51,12 +58,14 @@ class _ApiThreadNewParamsBase(BaseModel):
 
 class ApiThreadNewParamsDatabase(_ApiThreadNewParamsBase):
     """Create a thread on a database"""
+
     type: Literal["database"] = "database"
     database: str = Field(..., description="The database name")
 
 
 class ApiThreadNewParamsTable(_ApiThreadNewParamsBase):
     """Create a thread on a table"""
+
     type: Literal["table"] = "table"
     database: str = Field(..., description="The database name")
     table: str = Field(..., description="The table name")
@@ -64,6 +73,7 @@ class ApiThreadNewParamsTable(_ApiThreadNewParamsBase):
 
 class ApiThreadNewParamsRow(_ApiThreadNewParamsBase):
     """Create a thread on a row"""
+
     type: Literal["row"] = "row"
     database: str = Field(..., description="The database name")
     table: str = Field(..., description="The table name")
@@ -72,6 +82,7 @@ class ApiThreadNewParamsRow(_ApiThreadNewParamsBase):
 
 class ApiThreadNewParamsColumn(_ApiThreadNewParamsBase):
     """Create a thread on a column"""
+
     type: Literal["column"] = "column"
     database: str = Field(..., description="The database name")
     table: str = Field(..., description="The table name")
@@ -80,6 +91,7 @@ class ApiThreadNewParamsColumn(_ApiThreadNewParamsBase):
 
 class ApiThreadNewParamsValue(_ApiThreadNewParamsBase):
     """Create a thread on a specific value"""
+
     type: Literal["value"] = "value"
     database: str = Field(..., description="The database name")
     table: str = Field(..., description="The table name")

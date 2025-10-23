@@ -201,7 +201,7 @@ class TestApiThreadNewParamsDiscrimination:
     def test_discriminator_selects_database(self):
         """Test discriminator picks DatabaseParams for type='database'"""
         from pydantic import TypeAdapter
-        
+
         adapter = TypeAdapter(ApiThreadNewParams)
         data = {
             "type": "database",
@@ -215,7 +215,7 @@ class TestApiThreadNewParamsDiscrimination:
     def test_discriminator_selects_table(self):
         """Test discriminator picks TableParams for type='table'"""
         from pydantic import TypeAdapter
-        
+
         adapter = TypeAdapter(ApiThreadNewParams)
         data = {
             "type": "table",
@@ -230,7 +230,7 @@ class TestApiThreadNewParamsDiscrimination:
     def test_discriminator_selects_row(self):
         """Test discriminator picks RowParams for type='row'"""
         from pydantic import TypeAdapter
-        
+
         adapter = TypeAdapter(ApiThreadNewParams)
         data = {
             "type": "row",
@@ -246,7 +246,7 @@ class TestApiThreadNewParamsDiscrimination:
     def test_discriminator_selects_column(self):
         """Test discriminator picks ColumnParams for type='column'"""
         from pydantic import TypeAdapter
-        
+
         adapter = TypeAdapter(ApiThreadNewParams)
         data = {
             "type": "column",
@@ -262,7 +262,7 @@ class TestApiThreadNewParamsDiscrimination:
     def test_discriminator_selects_value(self):
         """Test discriminator picks ValueParams for type='value'"""
         from pydantic import TypeAdapter
-        
+
         adapter = TypeAdapter(ApiThreadNewParams)
         data = {
             "type": "value",
@@ -280,7 +280,7 @@ class TestApiThreadNewParamsDiscrimination:
     def test_discriminator_fails_missing_required_field(self):
         """Test that discriminator validation catches missing required fields"""
         from pydantic import TypeAdapter
-        
+
         adapter = TypeAdapter(ApiThreadNewParams)
         # Row type missing rowids
         data = {
@@ -296,7 +296,7 @@ class TestApiThreadNewParamsDiscrimination:
     def test_discriminator_fails_invalid_type(self):
         """Test that invalid type value fails discrimination"""
         from pydantic import TypeAdapter
-        
+
         adapter = TypeAdapter(ApiThreadNewParams)
         data = {
             "type": "nonexistent",

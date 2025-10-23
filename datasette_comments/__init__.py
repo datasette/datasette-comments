@@ -1,50 +1,32 @@
 import json
-from datasette import hookimpl, Permission
+from datasette import hookimpl
 from datasette.plugins import pm
+from datasette.resources import TableResource
 from sqlite_utils import Database
 from . import hookspecs
+from .actions import VIEW_COMMENTS_ACTION, ADD_COMMENTS_ACTION
 from .routes import (
     Routes,
     author_from_request,
-    PERMISSION_ACCESS_NAME,
-    PERMISSION_READONLY_NAME,
 )
 from .internal_migrations import internal_migrations
-from datasette.permissions import Action
-from datasette.resources import TableResource
 
 pm.add_hookspecs(hookspecs)
 
+
 @hookimpl
-def register_permissions(datasette):
+def register_actions(datasette):
     return [
-        Permission(
-            name=PERMISSION_ACCESS_NAME,
-            abbr=None,
-            description="Can write and create datasette-comments threads, comments and reactions.",
-            takes_database=False,
-            takes_resource=False,
-            default=False,
-        ),
-        Permission(
-            name=PERMISSION_READONLY_NAME,
-            abbr=None,
-            description="Can read datasette-comments threads, comments and reactions.",
-            takes_database=False,
-            takes_resource=False,
-            default=False,
-        ),
+        VIEW_COMMENTS_ACTION,
+        ADD_COMMENTS_ACTION,
     ]
 
 
 @hookimpl
 def menu_links(datasette, actor):
     async def inner():
-        if await datasette.permission_allowed(
-            actor, PERMISSION_ACCESS_NAME, default=False
-        ) or await datasette.permission_allowed(
-            actor, PERMISSION_READONLY_NAME, default=False
-        ):
+        # TODO: only actors with permission to view any comments
+        if True:
             return [
                 {
                     "href": datasette.urls.path("/-/datasette-comments/activity"),
@@ -100,22 +82,10 @@ SUPPORTED_VIEWS = ("index", "database", "table", "row")
 
 async def should_inject_content_script2(datasette, database, table, actor):
     return await datasette.allowed(
-        action=VIEW_COMMENTS_ACTION.name, 
-        resource=TableResource(database=database, table=table), 
-        actor=actor
+        action=VIEW_COMMENTS_ACTION.name,
+        resource=TableResource(database=database, table=table),
+        actor=actor,
     )
-
-
-async def should_inject_content_script(datasette, request, view_name):
-    if not request:
-        return False
-    if await datasette.permission_allowed(
-        request.actor, PERMISSION_ACCESS_NAME, default=False
-    ) or await datasette.permission_allowed(
-        request.actor, PERMISSION_READONLY_NAME, default=False
-    ):
-        return view_name in SUPPORTED_VIEWS
-    return False
 
 
 @hookimpl
@@ -123,7 +93,6 @@ async def extra_body_script(
     template, database, table, columns, view_name, request, datasette
 ):
     if await should_inject_content_script2(datasette, database, table, request.actor):
-        # if await should_inject_content_script(datasette, request, view_name):
         author = await author_from_request(datasette, request)
         meta = json.dumps(
             {
@@ -131,9 +100,7 @@ async def extra_body_script(
                 "database": database,
                 "table": table,
                 "author": author.model_dump(),
-                "readonly_viewer": await datasette.permission_allowed(
-                    request.actor, PERMISSION_READONLY_NAME, default=False
-                ),
+                "readonly_viewer": "TODO",
             }
         )
         return f"window.DATASETTE_COMMENTS_META = {meta}"
@@ -143,7 +110,9 @@ async def extra_body_script(
 @hookimpl
 def extra_js_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if await should_inject_content_script2(datasette, database, table, request.actor):
+        if await should_inject_content_script2(
+            datasette, database, table, request.actor
+        ):
             return [
                 datasette.urls.path(
                     "/-/static-plugins/datasette-comments/content_script/index.min.js"
@@ -157,7 +126,9 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
 @hookimpl
 def extra_css_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if await should_inject_content_script2(datasette, database, table, request.actor):
+        if await should_inject_content_script2(
+            datasette, database, table, request.actor
+        ):
             return [
                 datasette.urls.path(
                     "/-/static-plugins/datasette-comments/content_script/index.min.css"
@@ -166,28 +137,3 @@ def extra_css_urls(template, database, table, columns, view_name, request, datas
         return []
 
     return inner
-
-VIEW_COMMENTS_ACTION = Action(
-    name="view-comments",
-    abbr=None,
-    description="Ability to view comments on a table",
-    takes_parent=True,
-    takes_child=False,
-    resource_class=TableResource,
-)
-
-ADD_COMMENTS_ACTION = Action(
-    name="add-comments",
-    abbr=None,
-    description="Ability to add comments to a table",
-    takes_parent=True,
-    takes_child=True,
-    resource_class=TableResource,
-)
-
-@hookimpl
-def register_actions(datasette):
-    return [
-        VIEW_COMMENTS_ACTION,
-        ADD_COMMENTS_ACTION,
-    ]
