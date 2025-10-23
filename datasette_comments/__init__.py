@@ -69,7 +69,7 @@ def register_routes():
             r"^/-/datasette-comments/api/thread/comments/(?P<thread_id>.*)$",
             Routes.api_thread_comments,
         ),
-        (r"^/-/datasette-comments/api/thread/comment/add$", Routes.comment_add),
+        (r"^/-/datasette-comments/api/thread/comment/add$", Routes.api_comment_new),
         (r"^/-/datasette-comments/api/threads/table_view$", Routes.table_view_threads),
         (r"^/-/datasette-comments/api/threads/row_view$", Routes.row_view_threads),
         (
@@ -104,13 +104,11 @@ SUPPORTED_VIEWS = ("index", "database", "table", "row")
 
 
 async def should_inject_content_script2(datasette, database, table, actor):
-    result = await datasette.allowed(
+    return await datasette.allowed(
         action=VIEW_COMMENTS_ACTION.name, 
         resource=TableResource(database=database, table=table), 
         actor=actor
     )
-    print(result)
-    return result
 
 
 async def should_inject_content_script(datasette, request, view_name):
@@ -150,7 +148,7 @@ async def extra_body_script(
 @hookimpl
 def extra_js_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if await should_inject_content_script(datasette, request, view_name):
+        if await should_inject_content_script2(datasette, database, table, request.actor):
             return [
                 datasette.urls.path(
                     "/-/static-plugins/datasette-comments/content_script/index.min.js"
@@ -164,7 +162,7 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
 @hookimpl
 def extra_css_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if await should_inject_content_script(datasette, request, view_name):
+        if await should_inject_content_script2(datasette, database, table, request.actor):
             return [
                 datasette.urls.path(
                     "/-/static-plugins/datasette-comments/content_script/index.min.css"

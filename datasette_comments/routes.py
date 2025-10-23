@@ -8,8 +8,10 @@ from ulid import ULID
 import hashlib
 import json
 from pydantic import TypeAdapter, ValidationError
+
+from datasette_comments.internal_database import InternalDB
 from . import comment_parser
-from .contract import ApiThreadNewResponse, ApiThreadNewParams
+from .contract import ApiCommentNewParams, ApiThreadNewResponse, ApiThreadNewParams
 
 # figured this would help with performance, to not hit label_column_for_table all the time?
 cached_label_columns = {}
@@ -45,42 +47,6 @@ async def get_label_column(datasette, db: str, table: str):
     return result
 
 
-def insert_comment(thread_id: str, author_actor_id: str, contents: str):
-    id = str(ULID()).lower()
-    parsed = comment_parser.parse(contents)
-    mentions = list(set(mention.value[1:] for mention in parsed.mentions))
-    hashtags = list(set(mention.value[1:] for mention in parsed.tags))
-
-    SQL = """
-        INSERT INTO datasette_comments_comments(
-          id,
-          thread_id,
-          author_actor_id,
-          contents,
-          mentions,
-          hashtags,
-          past_revisions
-        )
-        VALUES (
-          :id,
-          :thread_id,
-          :author_actor_id,
-          :contents,
-          :mentions,
-          :hashtags,
-          json_array()
-        )
-    """
-    params = {
-        "id": id,
-        "thread_id": thread_id,
-        "author_actor_id": author_actor_id,
-        "contents": contents,
-        "mentions": json.dumps(mentions),
-        "hashtags": json.dumps(hashtags),
-    }
-
-    return (SQL, params)
 
 
 def gravtar_url(email: str):
@@ -165,7 +131,6 @@ def check_permission(write=False):
 
 
 class Routes:
-    @check_permission()
     async def api_thread_comments(scope, receive, datasette, request):
         """Retrieves all comments for a given thread"""
         # TODO make sure actor can see the thread target (db, table, etc.)
@@ -234,7 +199,7 @@ class Routes:
 
         return Response.json({"ok": True})
 
-    @check_permission(write=True)
+    #@check_permission(write=True)
     async def api_thread_new(scope, receive, datasette, request):
         """Create a new thread on a 'target'"""
         if request.method != "POST":
@@ -242,7 +207,6 @@ class Routes:
 
         actor_id = request.actor.get("id")
 
-        # Parse and validate the request body using Pydantic
         try:
             body_data = json.loads((await request.post_body()).decode("utf8"))
             adapter = TypeAdapter(ApiThreadNewParams)
@@ -297,88 +261,14 @@ class Routes:
         except json.JSONDecodeError:
             return Response.json({"message": "Invalid JSON"}, status=400)
 
-        # Extract validated fields
-        type = params.type
-        database = params.database
-        table = getattr(params, "table", None)
-        column = getattr(params, "column", None)
-        rowids_encoded = getattr(params, "rowids", None)
-        comment = params.comment
-
-        # Handle column and value types that are not yet implemented
-        if type == "column":
-            raise Exception("TODO column type not implmented")
-        elif type == "value":
-            raise Exception("TODO value type not implmented")
-
-        # Decode rowids if present
-        if rowids_encoded is not None:
-            rowids = [tilde_decode(b) for b in rowids_encoded.split(",")]
-        else:
-            rowids = None
-
-        id = str(ULID()).lower()
-
-        def db_thread_new(conn):
-            cursor = conn.cursor()
-            cursor.execute("begin")
-            params = {
-                "id": id,
-                "creator_actor_id": actor_id,
-                "target_type": type,
-                "target_database": database,
-                "target_table": table if type != "database" else None,
-                "target_column": column if type in ("column", "row", "value") else None,
-                "target_row_ids": json.dumps(rowids)
-                if type in ("row", "value")
-                else None,
-            }
-
-            cursor.execute(
-                """
-                  insert into datasette_comments_threads(
-                    id,
-                    creator_actor_id,
-                    target_type,
-                    target_database,
-                    target_table,
-                    target_column,
-                    target_row_ids
-                  )
-                  values (
-                    :id,
-                    :creator_actor_id,
-                    :target_type,
-                    :target_database,
-                    :target_table,
-                    :target_column,
-                    :target_row_ids
-                  );
-                """,
-                params,
-            )
-            thread_id = cursor.execute(
-                "select id from datasette_comments_threads where rowid = ?",
-                (cursor.lastrowid,),
-            ).fetchone()[0]
-
-            cursor.execute(*(insert_comment(thread_id, actor_id, comment)))
-            cursor.execute("commit")
-            return thread_id
-
-        try:
-            thread_id = await datasette.get_internal_database().execute_write_fn(
-                db_thread_new,
-                block=True,
-            )
-            return Response.json(
-                ApiThreadNewResponse(ok=True, thread_id=thread_id).model_dump()
-            )
-        except Exception as e:
-            raise e
-
-    @check_permission(write=True)
-    async def comment_add(scope, receive, datasette, request):
+        internal_db = InternalDB(datasette.get_internal_database())
+        thread_id = await internal_db.create_new_thread(actor_id, params)
+        return Response.json(
+            ApiThreadNewResponse(ok=True, thread_id=thread_id).model_dump()
+        )
+    
+    #@check_permission(write=True)
+    async def api_comment_new(scope, receive, datasette, request):
         """Add a comment to a pre-existing thread"""
         # TODO ensure actor has permission to view/comment the target
 
@@ -386,23 +276,21 @@ class Routes:
             return Response.text("POST required", status=405)
 
         actor_id = request.actor.get("id")
+        try:
+          params: ApiCommentNewParams = ApiCommentNewParams.model_validate_json(
+              await request.post_body()
+          )
+        except ValueError:
+            return Response.json({"ok": False}, status=400)
 
-        data = json.loads((await request.post_body()).decode("utf8"))
-        thread_id = data.get("thread_id")
-        contents = data.get("contents")
-
-        await datasette.get_internal_database().execute_write(
-            *(insert_comment(thread_id, actor_id, contents)),
-            block=True,
-        )
-
+        internal_id = InternalDB(datasette.get_internal_database())
+        await internal_id.insert_comment(params.thread_id, actor_id, params.contents)
         return Response.json(
             {
                 "ok": True,
             }
         )
 
-    @check_permission()
     async def table_view_threads(scope, receive, datasette, request):
         """Retrieve all threads for a table view"""
         # TODO ensure actor has permission to view the table
@@ -471,7 +359,7 @@ class Routes:
             }
         )
 
-    @check_permission()
+    #@check_permission()
     async def row_view_threads(scope, receive, datasette, request):
         """Retrieve all threads for a row view"""
         # TODO ensure actor has permission to view the row
@@ -603,7 +491,7 @@ class Routes:
         )
         return Response.json({"ok": True})
 
-    @check_permission()
+    #@check_permission()
     async def activity_view(scope, receive, datasette, request):
         """The HTML Activity page view"""
         return Response.html(
@@ -632,7 +520,7 @@ class Routes:
                     )
         return Response.json({"suggestions": suggestions})
 
-    @check_permission()
+    #@check_permission()
     async def activity_search(scope, receive, datasette, request):
         """Search endpoint for the acitivity page."""
         search_comments = request.args.get("searchComments")
@@ -673,23 +561,36 @@ class Routes:
                 continue
             WHERE += " AND ? in (select value from json_each(comments.hashtags))"
             params.append(tag)
-
+        
+        allowed_actor_tables, p = await datasette.allowed_resources_sql(actor=request.actor, action="view-comments")
         sql = f"""
-              SELECT
-                comments.author_actor_id,
-                comments.contents,
-                comments.created_at,
-                (strftime('%s', 'now') - strftime('%s', comments.created_at)) as created_duration_seconds,
-                threads.target_type,
-                threads.target_database,
-                threads.target_table,
-                threads.target_row_ids,
-                threads.target_column
-              FROM datasette_comments_comments AS comments
-              LEFT JOIN datasette_comments_threads AS threads ON threads.id = comments.thread_id
-              WHERE {WHERE}
-              ORDER BY comments.created_at DESC
-              LIMIT 100;
+        WITH actor_tables(database_name, table_name, reason) AS (
+          {allowed_actor_tables}
+        ),
+        final as (
+          SELECT
+            comments.author_actor_id,
+            comments.contents,
+            comments.created_at,
+            (strftime('%s', 'now') - strftime('%s', comments.created_at)) as created_duration_seconds,
+            threads.target_type,
+            threads.target_database,
+            threads.target_table,
+            threads.target_row_ids,
+            threads.target_column
+          FROM datasette_comments_comments AS comments
+          LEFT JOIN datasette_comments_threads AS threads ON threads.id = comments.thread_id
+          LEFT JOIN actor_tables ON threads.target_database = actor_tables.database_name
+            AND threads.target_table = actor_tables.table_name
+          WHERE 
+            threads.target_type = 'row'
+            AND actor_tables.database_name IS NOT NULL
+            AND actor_tables.table_name IS NOT NULL
+            AND {WHERE}
+          ORDER BY comments.created_at DESC
+          LIMIT 100
+        )
+        select * from final;
         """
         results = await datasette.get_internal_database().execute(sql, params)
         data = [dict(row) for row in results.rows]

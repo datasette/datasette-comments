@@ -1,9 +1,24 @@
 from pydantic import BaseModel, Field
-from typing import Union, Annotated, Literal
+from typing import List, Union, Annotated, Literal
+
+from datasette_comments.comment_parser import RenderNode
 
 class ApiThreadNewResponse(BaseModel):
     ok: bool
     thread_id: str
+
+class ApiCommentNewParams(BaseModel):
+    thread_id: str
+    contents: str
+
+class Reaction(BaseModel):
+    reactor_actor_id: str
+    reaction: str
+class ApiThreadCommentsResponseItem(BaseModel):
+    id: str
+    #author: Author
+    render_nodes: List[RenderNode]
+    reactions: List[dict]
 
 
 # Subclasses for new thread parameters

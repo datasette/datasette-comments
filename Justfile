@@ -16,9 +16,14 @@ dev2:
       datasette -p 8005 \
       --root \
       --plugins-dir=tests/basic_plugin/ \
+      --static assets:tests/basic_plugin/static \
       --config tests/basic_plugin/metadata.yaml \
       --internal internal.db \
-      tmp.db
+      metropolis.db \
+      gotham.db \
+      superman-files.db \
+      batman-files.db \
+      luthor-files.db
 
 dev-watch *options:
   DATASETTE_SECRET=abc123 \
@@ -42,10 +47,11 @@ dev:
 # watchexec --signal SIGKILL --clear -e py,ts,js,html,css,sql --
 # legislators.db fixtures.db internal.db big.db
 
-test:
+test *options:
   uv run \
     --with-editable '.[test]' \
-    pytest
+    pytest \
+    {{options}}
 
 test-watch:
   watchexec \
