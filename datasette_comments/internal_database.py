@@ -1,3 +1,4 @@
+from typing import List
 from datasette.database import Database
 from .contract import (
     ApiThreadNewParams,
@@ -9,7 +10,16 @@ from .contract import (
 from ulid import ULID
 import json
 from . import comment_parser
+from dataclasses import dataclass
 
+@dataclass
+class ThreadCommentRow:
+    id: str
+    author_actor_id: str
+    created_at: str
+    created_duration_seconds: float
+    contents: str
+    reactions: list[dict]
 
 class InternalDB:
     def __init__(self, internal_db: Database):
@@ -56,6 +66,45 @@ class InternalDB:
             
         await self.db.execute_write_fn(write, block=True,)
     
+    async def get_thread_comments(self, thread_id: str) -> List[ThreadCommentRow]:
+        SQL = """
+          select
+            id,
+            author_actor_id,
+            created_at,
+            (strftime('%s', 'now') - strftime('%s', created_at)) as created_duration_seconds,
+            contents,
+            (
+              select json_group_array(
+                json_object(
+                  'reactor_actor_id', reactor_actor_id,
+                  'reaction', reaction
+                )
+              )
+              from datasette_comments_reactions
+              where comment_id == datasette_comments_comments.id
+            ) as reactions
+          from datasette_comments_comments
+          where thread_id = ?
+          order by created_at
+        """
+        rows = []
+
+        results = await self.db.execute(SQL, (thread_id,))
+        for row in results:
+            reactions = json.loads(row["reactions"]) if row["reactions"] else []
+            rows.append(
+                ThreadCommentRow(
+                    id=row["id"],
+                    author_actor_id=row["author_actor_id"],
+                    created_at=row["created_at"],
+                    created_duration_seconds=row["created_duration_seconds"],
+                    contents=row["contents"],
+                    reactions=reactions,
+                )
+            )
+        return rows
+        
     async def create_new_thread(self, actor_id: str, new_thread_params: ApiThreadNewParams) -> str:
         thread_id = str(ULID()).lower()
 

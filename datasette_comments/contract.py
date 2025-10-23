@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Union, Annotated, Literal
+from typing import List, Union, Annotated, Literal, Optional
 
 from datasette_comments.comment_parser import RenderNode
 
@@ -14,12 +14,35 @@ class ApiCommentNewParams(BaseModel):
 class Reaction(BaseModel):
     reactor_actor_id: str
     reaction: str
+
+class Author(BaseModel):
+    # the actor.id value for the author
+    actor_id: str
+
+    # Sourced from actor object key "name"
+    name: str
+
+    # Sourced from actor object key "profile_photo_url"
+    # OR the gravatar URL from key "email", if enable_gravatar
+    # is on.
+    profile_photo_url: Optional[str]
+
+    # the username is used for at-mentions. Should be unique to other actors
+    username: Optional[str]
+
 class ApiThreadCommentsResponseItem(BaseModel):
     id: str
-    #author: Author
+    author: Author
+    contents: str
+    created_at: str
+    created_duration_seconds: float
     render_nodes: List[RenderNode]
     reactions: List[dict]
 
+class ApiThreadCommentsResponse(BaseModel):
+    ok: Literal[True]
+    thread_id: str
+    comments: List[ApiThreadCommentsResponseItem]
 
 # Subclasses for new thread parameters
 class _ApiThreadNewParamsBase(BaseModel):

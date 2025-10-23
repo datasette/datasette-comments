@@ -1,6 +1,4 @@
 import json
-from pathlib import Path
-from dataclasses import asdict
 from datasette import hookimpl, Permission
 from datasette.plugins import pm
 from sqlite_utils import Database
@@ -16,9 +14,6 @@ from datasette.permissions import Action
 from datasette.resources import TableResource
 
 pm.add_hookspecs(hookspecs)
-
-SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
-
 
 @hookimpl
 def register_permissions(datasette):
@@ -135,7 +130,7 @@ async def extra_body_script(
                 "view_name": view_name,
                 "database": database,
                 "table": table,
-                "author": asdict(author),
+                "author": author.model_dump(),
                 "readonly_viewer": await datasette.permission_allowed(
                     request.actor, PERMISSION_READONLY_NAME, default=False
                 ),

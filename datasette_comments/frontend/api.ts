@@ -137,7 +137,7 @@ export class Api {
 
   static async threadComments(thread_id: string): Promise<{
     ok: boolean;
-    data: CommentData[];
+    comments: CommentData[];
   }> {
     return api(`/-/datasette-comments/api/thread/comments/${thread_id}`);
   }

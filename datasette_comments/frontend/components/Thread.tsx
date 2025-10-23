@@ -396,7 +396,7 @@ export function Thread(props: ThreadProps) {
     dispatch({ type: "init" });
     Api.threadComments(id)
       .then((data) => {
-        dispatch({ type: "success", data: data.data });
+        dispatch({ type: "success", data: data.comments });
       })
       .catch((error) => {
         dispatch({ type: "failure", error: "TODO" });

@@ -1,9 +1,8 @@
-from typing import List, Optional
+from typing import List
 from datasette import Response, Forbidden
 from datasette.plugins import pm
 from datasette.utils import await_me_maybe, tilde_decode, tilde_encode
 from functools import wraps
-from dataclasses import dataclass, asdict
 from ulid import ULID
 import hashlib
 import json
@@ -11,7 +10,14 @@ from pydantic import TypeAdapter, ValidationError
 
 from datasette_comments.internal_database import InternalDB
 from . import comment_parser
-from .contract import ApiCommentNewParams, ApiThreadNewResponse, ApiThreadNewParams
+from .contract import (
+    ApiCommentNewParams,
+    ApiThreadCommentsResponse,
+    ApiThreadCommentsResponseItem,
+    ApiThreadNewResponse,
+    ApiThreadNewParams,
+    Author,
+)
 
 # figured this would help with performance, to not hit label_column_for_table all the time?
 cached_label_columns = {}
@@ -47,27 +53,9 @@ async def get_label_column(datasette, db: str, table: str):
     return result
 
 
-
-
 def gravtar_url(email: str):
     hash = hashlib.sha256(email.lower().encode()).hexdigest()
     return f"https://www.gravatar.com/avatar/{hash}"
-
-@dataclass
-class Author:
-    # the actor.id value for the author
-    actor_id: str
-
-    # Sourced from actor object key "name"
-    name: str
-
-    # Sourced from actor object key "profile_photo_url"
-    # OR the gravatar URL from key "email", if enable_gravatar
-    # is on.
-    profile_photo_url: Optional[str]
-
-    # the username is used for at-mentions. Should be unique to other actors
-    username: Optional[str]
 
 
 def author_from_actor(datasette, actors, actor_id) -> Author:
@@ -77,14 +65,19 @@ def author_from_actor(datasette, actors, actor_id) -> Author:
     actor = actors.get(actor_id)
 
     if actor is None:
-        return Author(actor_id, "", None, None)
+        return Author(actor_id=actor_id, name="", profile_photo_url=None, username=None)
 
     name = actor.get("name")
     profile_photo_url = actor.get("profile_picture_url")
     if profile_photo_url is None and enable_gravatar and actor.get("email"):
         profile_photo_url = gravtar_url(actor.get("email"))
 
-    return Author(actor_id, name, profile_photo_url, actor.get("username"))
+    return Author(
+        actor_id=actor_id,
+        name=name,
+        profile_photo_url=profile_photo_url,
+        username=actor.get("username"),
+    )
 
 
 async def author_from_id(datasette, actor_id) -> Author:
@@ -96,7 +89,6 @@ async def author_from_id(datasette, actor_id) -> Author:
 
 async def author_from_request(datasette, request) -> Author:
     return await author_from_id(datasette, (request.actor or {}).get("id"))
-
 
 
 # Can access all datasette-comments features
@@ -136,45 +128,32 @@ class Routes:
         # TODO make sure actor can see the thread target (db, table, etc.)
         thread_id = request.url_vars["thread_id"]
 
-        results = await datasette.get_internal_database().execute(
-            """
-              select
-                id,
-                author_actor_id,
-                created_at,
-                (strftime('%s', 'now') - strftime('%s', created_at)) as created_duration_seconds,
-                contents,
-                (
-                  select json_group_array(
-                    json_object(
-                      'reactor_actor_id', reactor_actor_id,
-                      'reaction', reaction
-                    )
-                  )
-                  from datasette_comments_reactions
-                  where comment_id == datasette_comments_comments.id
-                ) as reactions
-              from datasette_comments_comments
-              where thread_id = ?
-              order by created_at
-            """,
-            (thread_id,),
-        )
+        items: List[ApiThreadCommentsResponseItem] = []
+        internal_db = InternalDB(datasette.get_internal_database())
+        comments = await internal_db.get_thread_comments(thread_id)
 
-        actor_ids = set()
-        rows = []
-        for row in results:
-            actor_ids.add(row["author_actor_id"])
-            rows.append(dict(row))
+        actor_ids = set([comment.author_actor_id for comment in comments])
         actors = await datasette.actors_from_ids(list(actor_ids))
-        for row in rows:
-            author = author_from_actor(datasette, actors, row["author_actor_id"])
-            row["author"] = asdict(author)
 
-            results = comment_parser.parse(row["contents"])
-            row["render_nodes"] = results.rendered
-            row["reactions"] = json.loads(row["reactions"]) if row["reactions"] else []
-        return Response.json({"ok": True, "data": rows})
+        for comment in comments:
+            author = author_from_actor(datasette, actors, comment.author_actor_id)
+            items.append(
+                ApiThreadCommentsResponseItem(
+                    id=comment.id,
+                    author=author,
+                    contents=comment.contents,
+                    created_at=comment.created_at,
+                    created_duration_seconds=comment.created_duration_seconds,
+                    render_nodes=comment_parser.parse(comment.contents).rendered,
+                    reactions=comment.reactions,
+                )
+            )
+
+        return Response.json(
+            ApiThreadCommentsResponse(
+                ok=True, thread_id=thread_id, comments=items
+            ).model_dump()
+        )
 
     @check_permission(write=True)
     async def thread_mark_resolved(scope, receive, datasette, request):
@@ -199,7 +178,7 @@ class Routes:
 
         return Response.json({"ok": True})
 
-    #@check_permission(write=True)
+    # @check_permission(write=True)
     async def api_thread_new(scope, receive, datasette, request):
         """Create a new thread on a 'target'"""
         if request.method != "POST":
@@ -216,25 +195,33 @@ class Routes:
             errors = e.errors()
             if errors:
                 first_error = errors[0]
-                field = first_error.get("loc", [""])[0] if first_error.get("loc") else ""
+                field = (
+                    first_error.get("loc", [""])[0] if first_error.get("loc") else ""
+                )
                 msg = first_error.get("msg", "Validation error")
-                
+
                 # Map Pydantic errors to original error messages
                 type_val = body_data.get("type", "")
                 if field == "table":
                     if type_val == "table":
                         return Response.json(
-                            {"message": "target type table requires 'database' and 'table' fields"},
+                            {
+                                "message": "target type table requires 'database' and 'table' fields"
+                            },
                             status=400,
                         )
                     elif type_val == "row":
                         return Response.json(
-                            {"message": "target type database requires 'database', 'table', and 'rowids' fields"},
+                            {
+                                "message": "target type database requires 'database', 'table', and 'rowids' fields"
+                            },
                             status=400,
                         )
                     elif type_val == "column":
                         return Response.json(
-                            {"message": "target type column requires 'database', 'table', and 'column' fields"},
+                            {
+                                "message": "target type column requires 'database', 'table', and 'column' fields"
+                            },
                             status=400,
                         )
                 elif field == "database":
@@ -245,16 +232,20 @@ class Routes:
                 elif field == "rowids":
                     if type_val == "row":
                         return Response.json(
-                            {"message": "target type database requires 'database', 'table', and 'rowids' fields"},
+                            {
+                                "message": "target type database requires 'database', 'table', and 'rowids' fields"
+                            },
                             status=400,
                         )
                 elif field == "column":
                     if type_val == "column":
                         return Response.json(
-                            {"message": "target type column requires 'database', 'table', and 'column' fields"},
+                            {
+                                "message": "target type column requires 'database', 'table', and 'column' fields"
+                            },
                             status=400,
                         )
-                
+
                 # Fallback to generic error
                 return Response.json({"message": msg}, status=400)
             return Response.json({"message": "Invalid request body"}, status=400)
@@ -266,8 +257,8 @@ class Routes:
         return Response.json(
             ApiThreadNewResponse(ok=True, thread_id=thread_id).model_dump()
         )
-    
-    #@check_permission(write=True)
+
+    # @check_permission(write=True)
     async def api_comment_new(scope, receive, datasette, request):
         """Add a comment to a pre-existing thread"""
         # TODO ensure actor has permission to view/comment the target
@@ -277,9 +268,9 @@ class Routes:
 
         actor_id = request.actor.get("id")
         try:
-          params: ApiCommentNewParams = ApiCommentNewParams.model_validate_json(
-              await request.post_body()
-          )
+            params: ApiCommentNewParams = ApiCommentNewParams.model_validate_json(
+                await request.post_body()
+            )
         except ValueError:
             return Response.json({"ok": False}, status=400)
 
@@ -359,7 +350,7 @@ class Routes:
             }
         )
 
-    #@check_permission()
+    # @check_permission()
     async def row_view_threads(scope, receive, datasette, request):
         """Retrieve all threads for a row view"""
         # TODO ensure actor has permission to view the row
@@ -491,7 +482,7 @@ class Routes:
         )
         return Response.json({"ok": True})
 
-    #@check_permission()
+    # @check_permission()
     async def activity_view(scope, receive, datasette, request):
         """The HTML Activity page view"""
         return Response.html(
@@ -513,14 +504,14 @@ class Routes:
                     suggestions.append(
                         {
                             "username": user.get("username"),
-                            "author": asdict(
+                            "author": (
                                 await author_from_id(datasette, user.get("id"))
-                            ),
+                            ).model_dump(),
                         }
                     )
         return Response.json({"suggestions": suggestions})
 
-    #@check_permission()
+    # @check_permission()
     async def activity_search(scope, receive, datasette, request):
         """Search endpoint for the acitivity page."""
         search_comments = request.args.get("searchComments")
@@ -561,8 +552,10 @@ class Routes:
                 continue
             WHERE += " AND ? in (select value from json_each(comments.hashtags))"
             params.append(tag)
-        
-        allowed_actor_tables, p = await datasette.allowed_resources_sql(actor=request.actor, action="view-comments")
+
+        allowed_actor_tables, p = await datasette.allowed_resources_sql(
+            actor=request.actor, action="view-comments"
+        )
         sql = f"""
         WITH actor_tables(database_name, table_name, reason) AS (
           {allowed_actor_tables}
@@ -602,7 +595,7 @@ class Routes:
         # augment the rows with extra metadata
         for row in data:
             author = author_from_actor(datasette, actors, row["author_actor_id"])
-            row["author"] = asdict(author)
+            row["author"] = author.model_dump()
 
             # if there's a "label column" for the table, then resolve the "label" for the row
             label_column = await get_label_column(
@@ -626,4 +619,3 @@ class Routes:
                 row["target_label"] = None
 
         return Response.json({"data": data})
-
