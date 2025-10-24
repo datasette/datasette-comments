@@ -402,14 +402,21 @@ async def table_view_threads(datasette, request):
 @route(r"^/-/datasette-comments/api/threads/row_view$")
 async def row_view_threads(datasette, request):
     """Retrieve all threads for a row view"""
-    # TODO ensure actor has permission to view the row
-
     if request.method != "POST":
         return Response.text("POST required", status=405)
 
     data = json.loads((await request.post_body()).decode("utf8"))
     database = data.get("database")
     table = data.get("table")
+    
+    # Check if actor has permission to view the table
+    if not await datasette.allowed(
+        actor=request.actor,
+        action=VIEW_COMMENTS_ACTION.name,
+        resource=TableResource(database, table),
+    ):
+        raise Forbidden("Actor cannot view comments for this table")
+    
     rowids_encoded: str = data.get("rowids")
     rowids = [tilde_decode(b) for b in rowids_encoded.split(",")]
 
