@@ -5,10 +5,7 @@ from datasette.resources import TableResource
 from sqlite_utils import Database
 from . import hookspecs
 from .actions import VIEW_COMMENTS_ACTION, ADD_COMMENTS_ACTION
-from .routes import (
-    Routes,
-    author_from_request,
-)
+from . import routes as Routes
 from .internal_migrations import internal_migrations
 
 pm.add_hookspecs(hookspecs)
@@ -93,7 +90,7 @@ async def extra_body_script(
     template, database, table, columns, view_name, request, datasette
 ):
     if await should_inject_content_script2(datasette, database, table, request.actor):
-        author = await author_from_request(datasette, request)
+        author = await Routes.author_from_request(datasette, request)
         meta = json.dumps(
             {
                 "view_name": view_name,
