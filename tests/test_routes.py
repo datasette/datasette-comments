@@ -246,6 +246,34 @@ class TestApiCommentNew:
         assert data["ok"] is True
 
     @pytest.mark.asyncio
+    async def test_permissions(self, datasette_with_plugin):
+        """Test that adding a comment without permission returns 403"""
+        # Create a thread as alex
+        thread_response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
+                "comment": "Initial comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        thread_id = thread_response.json()["thread_id"]
+
+        # Try to add a comment as bob who lacks permission
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/comment/add",
+            json={
+                "thread_id": thread_id,
+                "contents": "I should not be allowed to comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "bob"),
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
     async def test_missing_thread_id_returns_400(self, datasette_with_plugin):
         """Test that missing thread_id field returns 400"""
         response = await datasette_with_plugin.client.post(

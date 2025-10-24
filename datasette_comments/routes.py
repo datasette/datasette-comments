@@ -26,15 +26,18 @@ _routes = []
 
 def route(pattern: str):
     """Decorator to register a route with a regex pattern."""
+
     def decorator(func):
         _routes.append((pattern, func))
         return func
+
     return decorator
 
 
 def get_routes():
     """Return all registered routes."""
     return _routes
+
 
 # figured this would help with performance, to not hit label_column_for_table all the time?
 cached_label_columns = {}
@@ -108,13 +111,15 @@ async def author_from_request(datasette, request) -> Author:
     return await author_from_id(datasette, (request.actor or {}).get("id"))
 
 
-async def actor_can_view_thread(datasette, actor, thread_id: str) -> bool:
+async def actor_can_perform_action_thread(
+    datasette, actor, thread_id: str, action: str
+) -> bool:
     """Check if the given actor can view the given thread"""
     internal_db = InternalDB(datasette.get_internal_database())
     thread = await internal_db.get_thread_by_id(thread_id)
 
     allowed_actor_threads, params = await datasette.allowed_resources_sql(
-        actor=actor, action=VIEW_COMMENTS_ACTION.name
+        actor=actor, action=action
     )
     print(allowed_actor_threads)
     sql = f"""
@@ -143,7 +148,9 @@ async def api_thread_comments(datasette, request):
     # TODO make sure actor can see the thread target (db, table, etc.)
     thread_id = request.url_vars["thread_id"]
 
-    if not await actor_can_view_thread(datasette, request.actor, thread_id):
+    if not await actor_can_perform_action_thread(
+        datasette, request.actor, thread_id, VIEW_COMMENTS_ACTION.name
+    ):
         raise Forbidden("Actor cannot view this thread")
 
     items: List[ApiThreadCommentsResponseItem] = []
@@ -300,6 +307,11 @@ async def api_comment_new(datasette, request):
         )
     except ValueError:
         return Response.json({"ok": False}, status=400)
+
+    if not await actor_can_perform_action_thread(
+        datasette, request.actor, params.thread_id, ADD_COMMENTS_ACTION.name
+    ):
+        raise Forbidden("Actor cannot add to this thread")
 
     internal_id = InternalDB(datasette.get_internal_database())
     await internal_id.insert_comment(params.thread_id, actor_id, params.contents)
