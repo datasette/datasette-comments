@@ -227,3 +227,19 @@ class InternalDB:
 
         await self.db.execute_write_fn(db_thread_new)
         return thread_id
+
+    async def get_row_view_threads(
+        self, database: str, table: str, rowids: List[str]
+    ) -> List[str]:
+        """Get all thread IDs for a specific row view"""
+        SQL = """
+          SELECT id
+          FROM datasette_comments_threads
+          WHERE target_type = 'row'
+            AND target_database = ?
+            AND target_table = ?
+            AND target_row_ids = ?
+            AND NOT marked_resolved
+        """
+        results = await self.db.execute(SQL, (database, table, json.dumps(rowids)))
+        return [row["id"] for row in results.rows]

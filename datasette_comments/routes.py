@@ -17,6 +17,8 @@ from .contract import (
     ApiThreadCommentsResponseItem,
     ApiThreadNewResponse,
     ApiThreadNewParams,
+    ApiRowViewThreadsParams,
+    ApiRowViewThreadsResponse,
     Author,
 )
 
@@ -405,43 +407,39 @@ async def row_view_threads(datasette, request):
     if request.method != "POST":
         return Response.text("POST required", status=405)
 
-    data = json.loads((await request.post_body()).decode("utf8"))
-    database = data.get("database")
-    table = data.get("table")
-    
+    try:
+        params: ApiRowViewThreadsParams = ApiRowViewThreadsParams.model_validate_json(
+            await request.post_body()
+        )
+    except ValidationError as e:
+        return Response.json({"message": str(e)}, status=400)
+    except json.JSONDecodeError:
+        return Response.json({"message": "Invalid JSON"}, status=400)
+
     # Check if actor has permission to view the table
     if not await datasette.allowed(
         actor=request.actor,
         action=VIEW_COMMENTS_ACTION.name,
-        resource=TableResource(database, table),
+        resource=TableResource(params.database, params.table),
     ):
         raise Forbidden("Actor cannot view comments for this table")
-    
-    rowids_encoded: str = data.get("rowids")
-    rowids = [tilde_decode(b) for b in rowids_encoded.split(",")]
 
-    response = await datasette.get_internal_database().execute(
-        """
-          select
-            id
-          from datasette_comments_threads
-          where target_type == 'row'
-            and target_database == ?1
-            and target_table == ?2
-            and target_row_ids = ?3
-            and not marked_resolved
-        """,
-        (database, table, json.dumps(rowids)),
+    # Decode the rowids from tilde-encoded format
+    rowids = [tilde_decode(b) for b in params.rowids.split(",")]
+
+    # Get threads using the new internal_database method
+    internal_db = InternalDB(datasette.get_internal_database())
+    row_threads = await internal_db.get_row_view_threads(
+        params.database, params.table, rowids
     )
-    row_threads = [row["id"] for row in response.rows]
 
     return Response.json(
-        {
-            "ok": True,
-            "data": {
+        ApiRowViewThreadsResponse(
+            ok=True,
+            data={
                 "row_threads": row_threads,
             },
-        }
+        ).model_dump()
     )
 
 

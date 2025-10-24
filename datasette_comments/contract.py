@@ -110,3 +110,22 @@ ApiThreadNewParams = Annotated[
     ],
     Field(discriminator="type"),
 ]
+
+
+class ApiRowViewThreadsParams(BaseModel):
+    """Parameters for retrieving threads on a row view"""
+
+    database: str = Field(..., description="The database name")
+    table: str = Field(..., description="The table name")
+    rowids: str = Field(
+        ..., description="Tilde-encoded comma-separated row IDs for the row"
+    )
+
+
+class ApiRowViewThreadsResponse(BaseModel):
+    """Response for row view threads endpoint"""
+
+    ok: Literal[True]
+    data: dict = Field(
+        ..., description="Contains 'row_threads' list with thread IDs"
+    )
