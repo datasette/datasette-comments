@@ -11,7 +11,8 @@ classifiers = [
 ]
 dependencies = [
   #"datasette>=1.0a6", 
-  "datasette @ git+https://github.com/simonw/datasette.git@resource-based-permissions",
+  #"datasette @ git+https://github.com/simonw/datasette.git@resource-based-permissions",
+  "datasette @ file:///Users/alex/projects/datasette",
   "pydantic>2.0,<3.0",
   "sqlite-utils", "python-ulid", "sqlite-migrate==0.1b0"]
 

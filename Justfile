@@ -53,7 +53,7 @@ test *options:
     pytest \
     {{options}}
 
-test-watch:
+test-watch *options:
   watchexec \
     --stop-signal SIGKILL \
     --ignore '*.db' \
@@ -61,7 +61,7 @@ test-watch:
     --ignore '*.db-wal' \
     --restart \
     --clear -- \
-      just test
+      just test {{options}}
 
 format:
   black .

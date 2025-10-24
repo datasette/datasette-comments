@@ -17,15 +17,18 @@ async def test_plugin_is_installed():
 
 
 @pytest.mark.asyncio
-async def test_permissions():
-    datasette = Datasette(
-        memory=True,
-        config={"permissions": {"datasette-comments-access": {"id": ["alex"]}}},
-    )
+async def test_permissions(datasette_with_plugin):
+    datasette = datasette_with_plugin
 
     response = await datasette.client.post(
         "/-/datasette-comments/api/thread/new",
-        json={"type": "database", "database": "foo", "comment": "lol #yo"},
+        json={
+            "type": "row",
+            "database": "foo",
+            "table": "bar",
+            "rowids": "1",
+            "comment": "lol #yo",
+        },
         cookies=cookie_for_actor(datasette, "alex"),
     )
     assert response.status_code == 200
@@ -35,28 +38,31 @@ async def test_permissions():
 
     response = await datasette.client.post(
         "/-/datasette-comments/api/thread/new",
-        json={"type": "database", "database": "foo", "comment": "lol #yo"},
+        json={
+            "type": "row",
+            "database": "foo",
+            "table": "bar",
+            "rowids": "1",
+            "comment": "lol #yo",
+        },
         cookies=cookie_for_actor(datasette, "unknown"),
     )
     assert response.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_readonly_permissions():
-    datasette = Datasette(
-        memory=True,
-        config={
-            "permissions": {
-                "datasette-comments-access": {"id": ["alex"]},
-                "datasette-comments-readonly": {"id": ["readonly"]},
-            }
-        },
-    )
+async def test_readonly_permissions(datasette_with_plugin):
+    datasette = datasette_with_plugin
 
-    # datasette-comments-access users can create threads
     response = await datasette.client.post(
         "/-/datasette-comments/api/thread/new",
-        json={"type": "database", "database": "foo", "comment": "lol #yo"},
+        json={
+            "type": "row",
+            "database": "foo",
+            "table": "bar",
+            "rowids": "1",
+            "comment": "lol #yo",
+        },
         cookies=cookie_for_actor(datasette, "alex"),
     )
     assert response.status_code == 200
@@ -67,7 +73,13 @@ async def test_readonly_permissions():
     # readonly user cannot create a new thread
     response = await datasette.client.post(
         "/-/datasette-comments/api/thread/new",
-        json={"type": "database", "database": "foo", "comment": "lol #yo"},
+        json={
+            "type": "row",
+            "database": "foo",
+            "table": "bar",
+            "rowids": "1",
+            "comment": "lol #yo",
+        },
         cookies=cookie_for_actor(datasette, "readonly"),
     )
     assert response.status_code == 403
@@ -105,7 +117,7 @@ async def test_readonly_permissions():
                     "username": "asg017",
                     "author": {
                         "actor_id": "1",
-                        "name": None,
+                        "name": "",
                         "profile_photo_url": None,
                         "username": None,
                     },
@@ -118,7 +130,7 @@ async def test_readonly_permissions():
                 {
                     "author": {
                         "actor_id": "2",
-                        "name": None,
+                        "name": "",
                         "profile_photo_url": None,
                         "username": None,
                     },

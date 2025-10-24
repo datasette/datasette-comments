@@ -1,7 +1,7 @@
-import json
-from datasette.app import Datasette
+from datasette.app import Datasette, Database
 from datasette.plugins import pm
 from datasette import hookimpl
+from datasette.permissions import PermissionSQL
 from subprocess import Popen, PIPE
 import pytest
 import pytest_asyncio
@@ -13,6 +13,7 @@ import sqlite_utils
 from pathlib import Path
 import time
 import httpx
+from datasette_comments.actions import ADD_COMMENTS_ACTION, VIEW_COMMENTS_ACTION
 from datasette_comments.internal_migrations import internal_migrations
 
 FIXTURES_SQL = (Path(__file__).parent / "comments-fixtures.sql").read_text()
@@ -65,8 +66,6 @@ def actors_from_ids(datasette, actor_ids):
     return actors
 """
 
-METADATA = {"permissions": {"datasette-comments-access": {"id": ["1", "2"]}}}
-
 
 @pytest.fixture
 def screenshot_snapshot(snapshot):
@@ -78,7 +77,6 @@ def ds_server(request):
     tmpdir = tempfile.TemporaryDirectory()
     internal_db_path = Path(tmpdir.name) / "internal.db"
     mydata_db_path = Path(tmpdir.name) / "my_data.db"
-    metadata_path = Path(tmpdir.name) / "metadata.json"
 
     internal_db = sqlite3.connect(internal_db_path)
     internal_migrations.apply(sqlite_utils.Database(internal_db))
@@ -90,7 +88,6 @@ def ds_server(request):
     mydata_db.close()
 
     (Path(tmpdir.name) / "plugin.py").write_text(PLUGIN_PY)
-    metadata_path.write_text(json.dumps(METADATA))
 
     process = Popen(
         [
@@ -104,8 +101,6 @@ def ds_server(request):
             str(internal_db_path.absolute()),
             "--plugins-dir",
             str(Path(tmpdir.name).absolute()),
-            "--metadata",
-            str(metadata_path.absolute()),
         ],
         stdout=PIPE,
     )
@@ -149,6 +144,13 @@ async def datasette_with_plugin():
         __name__ = "TestPlugin"
 
         @hookimpl
+        def startup(datasette):
+            async def inner():
+                pass
+
+            return inner
+
+        @hookimpl
         def datasette_comments_users(self, datasette):
             async def inner():
                 datasette._datasette_comments_users_accessed = True
@@ -156,12 +158,46 @@ async def datasette_with_plugin():
 
             return inner
 
+        @hookimpl
+        def permission_resources_sql(datasette, actor, action):
+            if actor.get("id") == "alex" and action in (
+                VIEW_COMMENTS_ACTION.name,
+                ADD_COMMENTS_ACTION.name,
+            ):
+                return [
+                    PermissionSQL(
+                        source="alex_access",
+                        sql="select database_name as parent, table_name as child, 1 as allow, 'granted' as reason from catalog_tables",
+                        params={},
+                    )
+                ]
+            if actor.get("id") == "readonly" and action in (VIEW_COMMENTS_ACTION.name):
+                return [
+                    PermissionSQL(
+                        source="readonly_access",
+                        sql="select database_name as parent, table_name as child, 1 as allow, 'granted' as reason from catalog_tables",
+                        params={},
+                    )
+                ]
+            return []
+
     pm.register(TestPlugin(), name="undo")
     try:
-        yield Datasette(
+        ds = Datasette(
             memory=True,
-            config={"permissions": {"datasette-comments-access": {"id": ["alex"]}}},
             pdb=True,
         )
+        import tempfile
+
+        tmpfile = tempfile.NamedTemporaryFile(delete=False)
+        db = Database(ds, path=tmpfile.name, is_mutable=True)
+        await db.execute_write_script(
+            "drop table if exists bar; CREATE TABLE bar(a,b,c); INSERT INTO bar VALUES (1,2,3), (4,5,6);"
+        )
+        ds.add_database(db, name="foo")
+
+        # await ds.client.get("/")
+        await ds._refresh_schemas()
+        yield ds
     finally:
         pm.unregister(name="undo")

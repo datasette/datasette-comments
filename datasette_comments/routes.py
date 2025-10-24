@@ -2,13 +2,13 @@ from typing import List
 from datasette import Response, Forbidden
 from datasette.plugins import pm
 from datasette.utils import await_me_maybe, tilde_decode, tilde_encode
-from functools import wraps
+from datasette.resources import TableResource
 from ulid import ULID
 import hashlib
 import json
 from pydantic import TypeAdapter, ValidationError
 
-from datasette_comments.actions import VIEW_COMMENTS_ACTION
+from datasette_comments.actions import ADD_COMMENTS_ACTION, VIEW_COMMENTS_ACTION
 from datasette_comments.internal_database import InternalDB
 from . import comment_parser
 from .contract import (
@@ -102,7 +102,7 @@ async def actor_can_view_thread(datasette, actor, thread_id: str) -> bool:
     )
     print(allowed_actor_threads)
     sql = f"""
-    WITH actor_allowed_tables(database_name, table_name) AS (
+    WITH actor_allowed_tables(database_name, table_name, _) AS (
       {allowed_actor_threads}
     )
     SELECT 1
@@ -190,7 +190,7 @@ class Routes:
         try:
             body_data = json.loads((await request.post_body()).decode("utf8"))
             adapter = TypeAdapter(ApiThreadNewParams)
-            params = adapter.validate_python(body_data)
+            params: ApiThreadNewParams = adapter.validate_python(body_data)
         except ValidationError as e:
             # Extract the first error message to maintain similar error format
             errors = e.errors()
@@ -252,6 +252,14 @@ class Routes:
             return Response.json({"message": "Invalid request body"}, status=400)
         except json.JSONDecodeError:
             return Response.json({"message": "Invalid JSON"}, status=400)
+
+        assert params.type == "row"
+        if not await datasette.allowed(
+            actor=request.actor,
+            action=ADD_COMMENTS_ACTION.name,
+            resource=TableResource(params.database, params.table),
+        ):
+            raise Forbidden("Actor cannot create comment threads")
 
         internal_db = InternalDB(datasette.get_internal_database())
         thread_id = await internal_db.create_new_thread(actor_id, params)

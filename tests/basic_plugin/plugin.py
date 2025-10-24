@@ -1,5 +1,5 @@
 from datasette import hookimpl
-from datasette.utils.permissions import PluginSQL
+from datasette.utils.permissions import PermissionSQL
 from datasette_comments import ADD_COMMENTS_ACTION, VIEW_COMMENTS_ACTION
 
 
@@ -80,7 +80,7 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
     return ["/assets/widget.js"]
 
 
-DAILY_PLANET_ACCESS_METROPOLIS_RULE = PluginSQL(
+DAILY_PLANET_ACCESS_METROPOLIS_RULE = PermissionSQL(
     source="daily_planet_access_metropolis",
     sql="""
               SELECT 
@@ -94,7 +94,7 @@ DAILY_PLANET_ACCESS_METROPOLIS_RULE = PluginSQL(
     params={},
 )
 
-GOTHAM_GAZETTE_ACCESS_GOTHAM_RULE = PluginSQL(
+GOTHAM_GAZETTE_ACCESS_GOTHAM_RULE = PermissionSQL(
     source="gotham_gazette_access_gotham",
     sql="""
   SELECT 
@@ -111,6 +111,8 @@ GOTHAM_GAZETTE_ACCESS_GOTHAM_RULE = PluginSQL(
 
 @hookimpl
 def permission_resources_sql(datasette, actor, action):
+    if not actor:
+        return []
     rules = []
     if action == VIEW_COMMENTS_ACTION.name:
         if actor["newsroom"] == "daily-planet":

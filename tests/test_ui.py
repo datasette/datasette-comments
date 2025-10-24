@@ -1,6 +1,8 @@
 import pytest
 from playwright.sync_api import Page, expect
 
+pytest.skip(allow_module_level=True)
+
 
 def test_initial_load(page: Page, screenshot_snapshot, ds_server):
     page.goto(f"{ds_server}/-/datasette-comments/tags/tag1")

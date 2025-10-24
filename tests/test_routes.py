@@ -8,9 +8,16 @@ def cookie_for_actor(datasette, actor_id):
 
 @pytest.mark.asyncio
 async def test_routes_thread_comments(datasette_with_plugin):
+    print(datasette_with_plugin.databases)
     response = await datasette_with_plugin.client.post(
         "/-/datasette-comments/api/thread/new",
-        json={"type": "database", "database": "foo", "comment": "lol #yo"},
+        json={
+            "type": "row",
+            "database": "foo",
+            "table": "bar",
+            "rowids": "1",
+            "comment": "lol #yo",
+        },
         cookies=cookie_for_actor(datasette_with_plugin, "alex"),
     )
     assert response.status_code == 200
@@ -37,72 +44,14 @@ class TestApiThreadNew:
         assert response.status_code == 405
 
     @pytest.mark.asyncio
-    async def test_database_type_valid(self, datasette_with_plugin):
-        """Test creating a thread on a database"""
-        response = await datasette_with_plugin.client.post(
-            "/-/datasette-comments/api/thread/new",
-            json={
-                "type": "database",
-                "database": "test_db",
-                "comment": "Database comment",
-            },
-            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["ok"] is True
-        assert "thread_id" in data
-        assert ApiThreadNewResponse.model_validate(data)
-
-    @pytest.mark.asyncio
-    async def test_database_type_missing_database(self, datasette_with_plugin):
-        """Test database type without database field returns 400"""
-        response = await datasette_with_plugin.client.post(
-            "/-/datasette-comments/api/thread/new",
-            json={"type": "database", "comment": "Comment"},
-            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
-        )
-        assert response.status_code == 400
-        assert "database requires 'database' field" in response.json()["message"]
-
-    @pytest.mark.asyncio
-    async def test_table_type_valid(self, datasette_with_plugin):
-        """Test creating a thread on a table"""
-        response = await datasette_with_plugin.client.post(
-            "/-/datasette-comments/api/thread/new",
-            json={
-                "type": "table",
-                "database": "test_db",
-                "table": "users",
-                "comment": "Table comment",
-            },
-            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["ok"] is True
-        assert "thread_id" in data
-
-    @pytest.mark.asyncio
-    async def test_table_type_missing_table(self, datasette_with_plugin):
-        """Test table type without table field returns 400"""
-        response = await datasette_with_plugin.client.post(
-            "/-/datasette-comments/api/thread/new",
-            json={"type": "table", "database": "test_db", "comment": "Comment"},
-            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
-        )
-        assert response.status_code == 400
-        assert "'database' and 'table' fields" in response.json()["message"]
-
-    @pytest.mark.asyncio
     async def test_row_type_valid(self, datasette_with_plugin):
         """Test creating a thread on a row"""
         response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/new",
             json={
                 "type": "row",
-                "database": "test_db",
-                "table": "users",
+                "database": "foo",
+                "table": "bar",
                 "rowids": "1",
                 "comment": "Row comment",
             },
@@ -120,8 +69,8 @@ class TestApiThreadNew:
             "/-/datasette-comments/api/thread/new",
             json={
                 "type": "row",
-                "database": "test_db",
-                "table": "compound",
+                "database": "foo",
+                "table": "bar",
                 "rowids": "1,abc~2Fdef",
                 "comment": "Compound key row comment",
             },
@@ -138,8 +87,8 @@ class TestApiThreadNew:
             "/-/datasette-comments/api/thread/new",
             json={
                 "type": "row",
-                "database": "test_db",
-                "table": "users",
+                "database": "foo",
+                "table": "bar",
                 "comment": "Comment",
             },
             cookies=cookie_for_actor(datasette_with_plugin, "alex"),
@@ -149,78 +98,11 @@ class TestApiThreadNew:
         assert response.json()["message"]
 
     @pytest.mark.asyncio
-    async def test_column_type_missing_column(self, datasette_with_plugin):
-        """Test column type without column field returns 400"""
-        response = await datasette_with_plugin.client.post(
-            "/-/datasette-comments/api/thread/new",
-            json={
-                "type": "column",
-                "database": "test_db",
-                "table": "users",
-                "comment": "Comment",
-            },
-            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
-        )
-        assert response.status_code == 400
-        # Pydantic validation will catch the missing column field
-        assert response.json()["message"]
-
-    @pytest.mark.asyncio
-    async def test_value_type_missing_column(self, datasette_with_plugin):
-        """Test value type without column field returns 400"""
-        response = await datasette_with_plugin.client.post(
-            "/-/datasette-comments/api/thread/new",
-            json={
-                "type": "value",
-                "database": "test_db",
-                "table": "users",
-                "rowids": "1",
-                "comment": "Comment",
-            },
-            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
-        )
-        assert response.status_code == 400
-        # Pydantic validation will catch the missing column field
-        assert response.json()["message"]
-
-    @pytest.mark.asyncio
-    async def test_value_type_missing_rowids(self, datasette_with_plugin):
-        """Test value type without rowids field returns 400"""
-        response = await datasette_with_plugin.client.post(
-            "/-/datasette-comments/api/thread/new",
-            json={
-                "type": "value",
-                "database": "test_db",
-                "table": "users",
-                "column": "email",
-                "comment": "Comment",
-            },
-            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
-        )
-        assert response.status_code == 400
-        # Pydantic validation will catch the missing rowids field
-        assert response.json()["message"]
-
-    @pytest.mark.asyncio
-    async def test_invalid_type(self, datasette_with_plugin):
-        """Test that invalid type value returns 400"""
-        response = await datasette_with_plugin.client.post(
-            "/-/datasette-comments/api/thread/new",
-            json={
-                "type": "invalid_type",
-                "database": "test_db",
-                "comment": "Comment",
-            },
-            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
-        )
-        assert response.status_code == 400
-
-    @pytest.mark.asyncio
     async def test_missing_comment_field(self, datasette_with_plugin):
         """Test that missing comment field returns 400"""
         response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/new",
-            json={"type": "database", "database": "test_db"},
+            json={"type": "row", "database": "foo", "table": "bar", "rowids": "1"},
             cookies=cookie_for_actor(datasette_with_plugin, "alex"),
         )
         assert response.status_code == 400
@@ -230,7 +112,12 @@ class TestApiThreadNew:
         """Test that missing type field returns 400"""
         response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/new",
-            json={"database": "test_db", "comment": "Comment"},
+            json={
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
+                "comment": "Comment",
+            },
             cookies=cookie_for_actor(datasette_with_plugin, "alex"),
         )
         assert response.status_code == 400
@@ -241,8 +128,10 @@ class TestApiThreadNew:
         response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/new",
             json={
-                "type": "database",
-                "database": "test_db",
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
                 "comment": "Comment",
                 "extra_field": "should be ignored",
                 "another_extra": 123,
@@ -259,8 +148,10 @@ class TestApiThreadNew:
         response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/new",
             json={
-                "type": "database",
-                "database": "test_db",
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
                 "comment": "This is a comment with #hashtag and #another_tag",
             },
             cookies=cookie_for_actor(datasette_with_plugin, "alex"),
@@ -275,9 +166,10 @@ class TestApiThreadNew:
         response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/new",
             json={
-                "type": "table",
-                "database": "test_db",
-                "table": "users",
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
                 "comment": "Hey @alice and @bob, check this out!",
             },
             cookies=cookie_for_actor(datasette_with_plugin, "alex"),
@@ -292,8 +184,10 @@ class TestApiThreadNew:
         response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/new",
             json={
-                "type": "database",
-                "database": "test_db",
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
                 "comment": "Test comment",
             },
             cookies=cookie_for_actor(datasette_with_plugin, "alex"),
@@ -327,8 +221,10 @@ class TestApiCommentNew:
         thread_response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/new",
             json={
-                "type": "database",
-                "database": "test_db",
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
                 "comment": "Initial comment",
             },
             cookies=cookie_for_actor(datasette_with_plugin, "alex"),
@@ -387,8 +283,10 @@ class TestApiCommentNew:
         thread_response = await datasette_with_plugin.client.post(
             "/-/datasette-comments/api/thread/new",
             json={
-                "type": "database",
-                "database": "test_db",
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
                 "comment": "Initial comment",
             },
             cookies=cookie_for_actor(datasette_with_plugin, "alex"),
