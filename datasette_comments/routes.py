@@ -20,6 +20,22 @@ from .contract import (
     Author,
 )
 
+# Route registry for decorator
+_routes = []
+
+
+def route(pattern: str):
+    """Decorator to register a route with a regex pattern."""
+    def decorator(func):
+        _routes.append((pattern, func))
+        return func
+    return decorator
+
+
+def get_routes():
+    """Return all registered routes."""
+    return _routes
+
 # figured this would help with performance, to not hit label_column_for_table all the time?
 cached_label_columns = {}
 
@@ -121,6 +137,7 @@ async def actor_can_view_thread(datasette, actor, thread_id: str) -> bool:
     return len(results.rows) > 0
 
 
+@route(r"^/-/datasette-comments/api/thread/comments/(?P<thread_id>.*)$")
 async def api_thread_comments(datasette, request):
     """Retrieves all comments for a given thread"""
     # TODO make sure actor can see the thread target (db, table, etc.)
@@ -157,6 +174,7 @@ async def api_thread_comments(datasette, request):
     )
 
 
+@route(r"^/-/datasette-comments/api/threads/mark_resolved$")
 async def thread_mark_resolved(datasette, request):
     """Mark a thread as 'resolved'"""
     if request.method != "POST":
@@ -180,6 +198,7 @@ async def thread_mark_resolved(datasette, request):
     return Response.json({"ok": True})
 
 
+@route(r"^/-/datasette-comments/api/thread/new$")
 async def api_thread_new(datasette, request):
     """Create a new thread on a 'target'"""
     if request.method != "POST":
@@ -266,6 +285,7 @@ async def api_thread_new(datasette, request):
     )
 
 
+@route(r"^/-/datasette-comments/api/thread/comment/add$")
 async def api_comment_new(datasette, request):
     """Add a comment to a pre-existing thread"""
     # TODO ensure actor has permission to view/comment the target
@@ -290,6 +310,7 @@ async def api_comment_new(datasette, request):
     )
 
 
+@route(r"^/-/datasette-comments/api/threads/table_view$")
 async def table_view_threads(datasette, request):
     """Retrieve all threads for a table view"""
     # TODO ensure actor has permission to view the table
@@ -359,6 +380,7 @@ async def table_view_threads(datasette, request):
     )
 
 
+@route(r"^/-/datasette-comments/api/threads/row_view$")
 async def row_view_threads(datasette, request):
     """Retrieve all threads for a row view"""
     # TODO ensure actor has permission to view the row
@@ -397,6 +419,7 @@ async def row_view_threads(datasette, request):
     )
 
 
+@route(r"^/-/datasette-comments/api/reactions/(?P<comment_id>.*)$")
 async def reactions(scope, receive, datasette, request):
     """Retrieve reactions data for a specific comment"""
     # TODO permissions
@@ -415,6 +438,7 @@ async def reactions(scope, receive, datasette, request):
     return Response.json([dict(row) for row in results.rows])
 
 
+@route(r"^/-/datasette-comments/api/reaction/add$")
 async def reaction_add(scope, receive, datasette, request):
     """Add a reaction to a specific comment"""
     # TODO permissions
@@ -458,6 +482,7 @@ async def reaction_add(scope, receive, datasette, request):
     return Response.json({"ok": True})
 
 
+@route(r"^/-/datasette-comments/api/reaction/remove$")
 async def reaction_remove(scope, receive, datasette, request):
     """Remove a reaction"""
     # TODO permissions
@@ -491,6 +516,7 @@ async def reaction_remove(scope, receive, datasette, request):
     return Response.json({"ok": True})
 
 
+@route(r"^/-/datasette-comments/activity$")
 async def activity_view(scope, receive, datasette, request):
     """The HTML Activity page view"""
     return Response.html(
@@ -501,6 +527,7 @@ async def activity_view(scope, receive, datasette, request):
     )
 
 
+@route(r"^/-/datasette-comments/api/autocomplete/mentions$")
 async def autocomplete_mentions(scope, receive, datasette, request):
     """Return a list of users that can be at-mentioned, for a autcomplete list"""
     prefix = request.args.get("prefix")
@@ -520,6 +547,7 @@ async def autocomplete_mentions(scope, receive, datasette, request):
     return Response.json({"suggestions": suggestions})
 
 
+@route(r"^/-/datasette-comments/api/activity_search$")
 async def activity_search(scope, receive, datasette, request):
     """Search endpoint for the acitivity page."""
     search_comments = request.args.get("searchComments")

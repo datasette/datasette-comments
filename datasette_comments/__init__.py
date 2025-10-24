@@ -36,33 +36,8 @@ def menu_links(datasette, actor):
 
 @hookimpl
 def register_routes():
-    return [
-        # API thread/comment operations
-        (r"^/-/datasette-comments/api/thread/new$", Routes.api_thread_new),
-        (
-            r"^/-/datasette-comments/api/thread/comments/(?P<thread_id>.*)$",
-            Routes.api_thread_comments,
-        ),
-        (r"^/-/datasette-comments/api/thread/comment/add$", Routes.api_comment_new),
-        (r"^/-/datasette-comments/api/threads/table_view$", Routes.table_view_threads),
-        (r"^/-/datasette-comments/api/threads/row_view$", Routes.row_view_threads),
-        (
-            r"^/-/datasette-comments/api/threads/mark_resolved$",
-            Routes.thread_mark_resolved,
-        ),
-        # API reactions
-        (r"^/-/datasette-comments/api/reaction/add$", Routes.reaction_add),
-        (r"^/-/datasette-comments/api/reaction/remove$", Routes.reaction_remove),
-        (r"^/-/datasette-comments/api/reactions/(?P<comment_id>.*)$", Routes.reactions),
-        # autocomplete helper on drafts
-        (
-            r"^/-/datasette-comments/api/autocomplete/mentions$",
-            Routes.autocomplete_mentions,
-        ),
-        # views
-        (r"^/-/datasette-comments/activity$", Routes.activity_view),
-        (r"^/-/datasette-comments/api/activity_search$", Routes.activity_search),
-    ]
+    # Use the route decorator registry from routes module
+    return Routes.get_routes()
 
 
 @hookimpl
