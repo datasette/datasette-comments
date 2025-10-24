@@ -344,3 +344,63 @@ class TestApiCommentNew:
         )
         assert response2.status_code == 200
         assert response2.json()["ok"] is True
+
+
+class TestApiTableViewThreads:
+    """Test the api/threads/table_view endpoint"""
+
+    @pytest.mark.asyncio
+    async def test_method_not_post_returns_405(self, datasette_with_plugin):
+        """Test that non-POST methods return 405"""
+        response = await datasette_with_plugin.client.get(
+            "/-/datasette-comments/api/threads/table_view",
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 405
+
+    @pytest.mark.asyncio
+    async def test_retrieve_table_threads(self, datasette_with_plugin):
+        """Test retrieving threads for a table view"""
+        # Create a thread first
+        thread_response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
+                "comment": "Test comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert thread_response.status_code == 200
+
+        # Now retrieve threads for the table
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/threads/table_view",
+            json={
+                "database": "foo",
+                "table": "bar",
+                "rowids": ["1"],
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+        assert "data" in data
+
+    @pytest.mark.asyncio
+    async def test_permissions(self, datasette_with_plugin):
+        """Test that viewing threads without permission returns 403"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/threads/table_view",
+            json={
+                "database": "foo",
+                "table": "bar",
+                "rowids": ["1"],
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "bob"),
+        )
+        assert response.status_code == 403
+
