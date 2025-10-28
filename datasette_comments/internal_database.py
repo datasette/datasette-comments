@@ -34,6 +34,12 @@ class ThreadRow:
     target_row_ids: List[str] | None
 
 
+@dataclass
+class TableViewRowThread:
+    id: str
+    target_row_ids: List[str]
+
+
 class InternalDB:
     def __init__(self, internal_db: Database):
         self.db = internal_db
@@ -243,3 +249,30 @@ class InternalDB:
         """
         results = await self.db.execute(SQL, (database, table, json.dumps(rowids)))
         return [row["id"] for row in results.rows]
+
+    async def get_table_view_row_threads(
+        self, database: str, table: str, rowids: List[List[str]]
+    ) -> List[TableViewRowThread]:
+        """Get all row threads for a table view (multiple rows)"""
+        SQL = """
+          SELECT
+            id,
+            target_row_ids
+          FROM datasette_comments_threads
+          WHERE target_type = 'row'
+            AND target_database = ?
+            AND target_table = ?
+            AND target_row_ids IN (
+              SELECT value
+              FROM json_each(?)
+            )
+            AND NOT marked_resolved
+        """
+        results = await self.db.execute(SQL, (database, table, json.dumps(rowids)))
+        return [
+            TableViewRowThread(
+                id=row["id"],
+                target_row_ids=json.loads(row["target_row_ids"])
+            )
+            for row in results.rows
+        ]

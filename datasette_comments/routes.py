@@ -19,6 +19,11 @@ from .contract import (
     ApiThreadNewParams,
     ApiRowViewThreadsParams,
     ApiRowViewThreadsResponse,
+    ApiTableViewThreadsParams,
+    ApiTableViewThreadsResponse,
+    ApiTableViewThreadsData,
+    TableViewRowThreadItem,
+    TableViewThreadItem,
     Author,
 )
 
@@ -330,74 +335,56 @@ async def table_view_threads(datasette, request):
     if request.method != "POST":
         return Response.text("POST required", status=405)
 
-    data = json.loads((await request.post_body()).decode("utf8"))
-    database = data.get("database")
-    table = data.get("table")
-    
+    try:
+        params: ApiTableViewThreadsParams = ApiTableViewThreadsParams.model_validate_json(
+            await request.post_body()
+        )
+    except ValidationError as e:
+        return Response.json({"message": str(e)}, status=400)
+    except json.JSONDecodeError:
+        return Response.json({"message": "Invalid JSON"}, status=400)
+
     # Check if actor has permission to view the table
     if not await datasette.allowed(
         actor=request.actor,
         action=VIEW_COMMENTS_ACTION.name,
-        resource=TableResource(database, table),
+        resource=TableResource(params.database, params.table),
     ):
         raise Forbidden("Actor cannot view comments for this table")
-    
-    rowids_encoded: List[str] = data.get("rowids")
+
+    # Decode the rowids from tilde-encoded format
     rowids: List[List[str]] = []
-    for rowid_encoded in rowids_encoded:
+    for rowid_encoded in params.rowids:
         parts = [tilde_decode(b) for b in rowid_encoded.split(",")]
         rowids.append(parts)
 
-    response = await datasette.get_internal_database().execute(
-        """
-          select id
-          from datasette_comments_threads
-          where target_type == 'table'
-            and target_database == ?1
-            and target_table == ?2
-            and not marked_resolved
-        """,
-        (database, table),
-    )
-    table_threads = [dict(row) for row in response.rows]
+    table_threads: List[TableViewThreadItem] = []
 
-    response = await datasette.get_internal_database().execute(
-        """
-          select
-            id,
-            target_row_ids
-          from datasette_comments_threads
-          where target_type == 'row'
-            and target_database == ?1
-            and target_table == ?2
-            and target_row_ids in (
-              select value
-              from json_each(?3)
-            )
-            and not marked_resolved
-        """,
-        (database, table, json.dumps(rowids)),
+    # Get row threads using the new internal_database method
+    internal_db = InternalDB(datasette.get_internal_database())
+    row_threads_raw = await internal_db.get_table_view_row_threads(
+        params.database, params.table, rowids
     )
+    
+    # Format the row threads with tilde-encoded rowids
     row_threads = [
-        {
-            "id": row["id"],
-            "rowids": "/".join(
-                map(lambda x: tilde_encode(x), json.loads(row["target_row_ids"]))
-            ),
-        }
-        for row in response.rows
+        TableViewRowThreadItem(
+            id=thread.id,
+            rowids="/".join(map(lambda x: tilde_encode(x), thread.target_row_ids)),
+        )
+        for thread in row_threads_raw
     ]
 
     return Response.json(
-        {
-            "ok": True,
-            "data": {
-                "table_threads": table_threads,
-                "column_threads": [],
-                "row_threads": row_threads,
-                "value_threads": [],
-            },
-        }
+        ApiTableViewThreadsResponse(
+            ok=True,
+            data=ApiTableViewThreadsData(
+                table_threads=table_threads,
+                column_threads=[],
+                row_threads=row_threads,
+                value_threads=[],
+            ),
+        ).model_dump()
     )
 
 

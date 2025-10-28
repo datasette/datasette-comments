@@ -129,3 +129,52 @@ class ApiRowViewThreadsResponse(BaseModel):
     data: dict = Field(
         ..., description="Contains 'row_threads' list with thread IDs"
     )
+
+
+class ApiTableViewThreadsParams(BaseModel):
+    """Parameters for retrieving threads on a table view"""
+
+    database: str = Field(..., description="The database name")
+    table: str = Field(..., description="The table name")
+    rowids: List[str] = Field(
+        ..., description="List of tilde-encoded comma-separated row IDs for each row in the view"
+    )
+
+
+class TableViewRowThreadItem(BaseModel):
+    """A row thread item in table view response"""
+
+    id: str = Field(..., description="The thread ID")
+    rowids: str = Field(
+        ..., description="Slash-separated tilde-encoded row IDs for the thread"
+    )
+
+
+class TableViewThreadItem(BaseModel):
+    """A table thread item in table view response"""
+
+    id: str = Field(..., description="The thread ID")
+
+
+class ApiTableViewThreadsData(BaseModel):
+    """Data structure for table view threads response"""
+
+    table_threads: List[TableViewThreadItem] = Field(
+        ..., description="Threads attached to the table itself"
+    )
+    column_threads: List[dict] = Field(
+        ..., description="Threads attached to columns (not yet implemented)"
+    )
+    row_threads: List[TableViewRowThreadItem] = Field(
+        ..., description="Threads attached to specific rows"
+    )
+    value_threads: List[dict] = Field(
+        ..., description="Threads attached to specific values (not yet implemented)"
+    )
+
+
+class ApiTableViewThreadsResponse(BaseModel):
+    """Response for table view threads endpoint"""
+
+    ok: Literal[True]
+    data: ApiTableViewThreadsData
