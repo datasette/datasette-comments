@@ -178,3 +178,17 @@ class ApiTableViewThreadsResponse(BaseModel):
 
     ok: Literal[True]
     data: ApiTableViewThreadsData
+class CommentReactionItem(BaseModel):
+    """A reaction item for a comment"""
+
+    reactor_actor_id: str = Field(..., description="The actor ID who reacted")
+    reaction: str = Field(..., description="The reaction emoji or string")
+
+
+class ApiCommentReactionsResponse(BaseModel):
+    """Response for comment reactions endpoint"""
+
+    ok: Literal[True]
+    reactions: List[CommentReactionItem] = Field(
+        ..., description="List of reactions on the comment"
+    )

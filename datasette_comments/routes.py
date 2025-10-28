@@ -25,6 +25,8 @@ from .contract import (
     TableViewRowThreadItem,
     TableViewThreadItem,
     Author,
+    ApiCommentReactionsResponse,
+    CommentReactionItem,
 )
 
 # Route registry for decorator
@@ -436,17 +438,23 @@ async def reactions(scope, receive, datasette, request):
     # TODO permissions
     comment_id = request.url_vars["comment_id"]
 
-    results = await datasette.get_internal_database().execute(
-        """
-          SELECT
-            reactor_actor_id,
-            reaction
-          FROM datasette_comments_reactions
-          WHERE comment_id == :comment_id
-        """,
-        {"comment_id": comment_id},
+    internal_db = InternalDB(datasette.get_internal_database())
+    reactions_data = await internal_db.comment_reactions(comment_id)
+    
+    reaction_items = [
+        CommentReactionItem(
+            reactor_actor_id=r.reactor_actor_id,
+            reaction=r.reaction
+        )
+        for r in reactions_data
+    ]
+    
+    return Response.json(
+        ApiCommentReactionsResponse(
+            ok=True,
+            reactions=reaction_items
+        ).model_dump()
     )
-    return Response.json([dict(row) for row in results.rows])
 
 
 @route(r"^/-/datasette-comments/api/reaction/add$")

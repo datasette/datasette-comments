@@ -40,6 +40,12 @@ class TableViewRowThread:
     target_row_ids: List[str]
 
 
+@dataclass
+class CommentReaction:
+    reactor_actor_id: str
+    reaction: str
+
+
 class InternalDB:
     def __init__(self, internal_db: Database):
         self.db = internal_db
@@ -273,6 +279,24 @@ class InternalDB:
             TableViewRowThread(
                 id=row["id"],
                 target_row_ids=json.loads(row["target_row_ids"])
+            )
+            for row in results.rows
+        ]
+
+    async def comment_reactions(self, comment_id: str) -> List[CommentReaction]:
+        """Get all reactions for a specific comment"""
+        SQL = """
+          SELECT
+            reactor_actor_id,
+            reaction
+          FROM datasette_comments_reactions
+          WHERE comment_id = ?
+        """
+        results = await self.db.execute(SQL, (comment_id,))
+        return [
+            CommentReaction(
+                reactor_actor_id=row["reactor_actor_id"],
+                reaction=row["reaction"]
             )
             for row in results.rows
         ]
