@@ -668,3 +668,240 @@ class TestApiCommentReactions:
             assert isinstance(reaction["reaction"], str)
 
 
+class TestApiReactionAdd:
+    """Test the api/reaction/add endpoint"""
+
+    @pytest.mark.asyncio
+    async def test_method_not_post_returns_405(self, datasette_with_plugin):
+        """Test that non-POST methods return 405"""
+        response = await datasette_with_plugin.client.get(
+            "/-/datasette-comments/api/reaction/add",
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 405
+
+    @pytest.mark.asyncio
+    async def test_add_reaction_to_comment(self, datasette_with_plugin):
+        """Test adding a reaction to a comment"""
+        # Create a thread and get comment_id
+        thread_response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
+                "comment": "Test comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        thread_id = thread_response.json()["thread_id"]
+        
+        # Get the comment ID
+        comments_response = await datasette_with_plugin.client.get(
+            f"/-/datasette-comments/api/thread/comments/{thread_id}",
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        comment_id = comments_response.json()["comments"][0]["id"]
+        
+        # Add a reaction
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/reaction/add",
+            json={
+                "comment_id": comment_id,
+                "reaction": "👍",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_missing_comment_id_returns_400(self, datasette_with_plugin):
+        """Test that missing comment_id field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/reaction/add",
+            json={
+                "reaction": "👍",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_missing_reaction_returns_400(self, datasette_with_plugin):
+        """Test that missing reaction field returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/reaction/add",
+            json={
+                "comment_id": "some_comment_id",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_invalid_json_returns_400(self, datasette_with_plugin):
+        """Test that invalid JSON returns 400"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/reaction/add",
+            content="not valid json",
+            headers={"Content-Type": "application/json"},
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_multiple_reactions_same_comment(self, datasette_with_plugin):
+        """Test adding multiple reactions to the same comment"""
+        # Create a thread and get comment_id
+        thread_response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
+                "comment": "Test comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        thread_id = thread_response.json()["thread_id"]
+        
+        # Get the comment ID
+        comments_response = await datasette_with_plugin.client.get(
+            f"/-/datasette-comments/api/thread/comments/{thread_id}",
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        comment_id = comments_response.json()["comments"][0]["id"]
+        
+        # Add first reaction
+        response1 = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/reaction/add",
+            json={
+                "comment_id": comment_id,
+                "reaction": "👍",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response1.status_code == 200
+        
+        # Add second reaction
+        response2 = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/reaction/add",
+            json={
+                "comment_id": comment_id,
+                "reaction": "❤️",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response2.status_code == 200
+        
+        # Verify both reactions exist
+        reactions_response = await datasette_with_plugin.client.get(
+            f"/-/datasette-comments/api/reactions/{comment_id}",
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        data = reactions_response.json()
+        assert len(data["reactions"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_response_structure(self, datasette_with_plugin):
+        """Test that the response has the correct structure"""
+        # Create a thread and get comment_id
+        thread_response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
+                "comment": "Test comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        thread_id = thread_response.json()["thread_id"]
+        
+        # Get the comment ID
+        comments_response = await datasette_with_plugin.client.get(
+            f"/-/datasette-comments/api/thread/comments/{thread_id}",
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        comment_id = comments_response.json()["comments"][0]["id"]
+        
+        # Add a reaction
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/reaction/add",
+            json={
+                "comment_id": comment_id,
+                "reaction": "🎉",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Validate with Pydantic model
+        from datasette_comments.contract import ApiReactionAddResponse
+        validated = ApiReactionAddResponse.model_validate(data)
+        assert validated.ok is True
+
+    @pytest.mark.asyncio
+    async def test_unauthenticated_returns_401(self, datasette_with_plugin):
+        """Test that unauthenticated requests return 401"""
+        response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/reaction/add",
+            json={
+                "comment_id": "some_comment_id",
+                "reaction": "👍",
+            },
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_emoji_reactions(self, datasette_with_plugin):
+        """Test adding various emoji reactions"""
+        # Create a thread and get comment_id
+        thread_response = await datasette_with_plugin.client.post(
+            "/-/datasette-comments/api/thread/new",
+            json={
+                "type": "row",
+                "database": "foo",
+                "table": "bar",
+                "rowids": "1",
+                "comment": "Test comment",
+            },
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        thread_id = thread_response.json()["thread_id"]
+        
+        # Get the comment ID
+        comments_response = await datasette_with_plugin.client.get(
+            f"/-/datasette-comments/api/thread/comments/{thread_id}",
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        comment_id = comments_response.json()["comments"][0]["id"]
+        
+        # Test various emoji reactions
+        emojis = ["👍", "👎", "❤️", "🎉", "😄", "🚀"]
+        for emoji in emojis:
+            response = await datasette_with_plugin.client.post(
+                "/-/datasette-comments/api/reaction/add",
+                json={
+                    "comment_id": comment_id,
+                    "reaction": emoji,
+                },
+                cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+            )
+            assert response.status_code == 200
+        
+        # Verify all reactions exist
+        reactions_response = await datasette_with_plugin.client.get(
+            f"/-/datasette-comments/api/reactions/{comment_id}",
+            cookies=cookie_for_actor(datasette_with_plugin, "alex"),
+        )
+        data = reactions_response.json()
+        assert len(data["reactions"]) == len(emojis)
+        reaction_set = {r["reaction"] for r in data["reactions"]}
+        assert reaction_set == set(emojis)

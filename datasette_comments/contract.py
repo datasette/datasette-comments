@@ -192,3 +192,16 @@ class ApiCommentReactionsResponse(BaseModel):
     reactions: List[CommentReactionItem] = Field(
         ..., description="List of reactions on the comment"
     )
+
+
+class ApiReactionAddParams(BaseModel):
+    """Parameters for adding a reaction to a comment"""
+
+    comment_id: str = Field(..., description="The comment ID to add reaction to")
+    reaction: str = Field(..., description="The reaction emoji or string")
+
+
+class ApiReactionAddResponse(BaseModel):
+    """Response for adding a reaction"""
+
+    ok: Literal[True]

@@ -3,7 +3,6 @@ from datasette import Response, Forbidden
 from datasette.plugins import pm
 from datasette.utils import await_me_maybe, tilde_decode, tilde_encode
 from datasette.resources import TableResource
-from ulid import ULID
 import hashlib
 import json
 from pydantic import TypeAdapter, ValidationError
@@ -27,6 +26,8 @@ from .contract import (
     Author,
     ApiCommentReactionsResponse,
     CommentReactionItem,
+    ApiReactionAddParams,
+    ApiReactionAddResponse,
 )
 
 # Route registry for decorator
@@ -197,7 +198,6 @@ async def thread_mark_resolved(datasette, request):
         return Response.text("", status=405)
 
     # TODO ensure only thread authors can resolve a thread?
-    actor_id = request.actor.get("id")
 
     data = json.loads((await request.post_body()).decode("utf8"))
     thread_id = data.get("thread_id")
@@ -464,41 +464,28 @@ async def reaction_add(scope, receive, datasette, request):
     if request.method != "POST":
         return Response.text("POST required", status=405)
 
-    data = json.loads((await request.post_body()).decode("utf8"))
+    try:
+        params: ApiReactionAddParams = ApiReactionAddParams.model_validate_json(
+            await request.post_body()
+        )
+    except ValidationError as e:
+        return Response.json({"message": str(e)}, status=400)
+    except json.JSONDecodeError:
+        return Response.json({"message": "Invalid JSON"}, status=400)
 
-    id = str(ULID()).lower()
-    comment_id = data.get("comment_id")
+    if request.actor is None:
+        return Response.json({"message": "Authentication required"}, status=401)
+    
     reactor_actor_id = request.actor.get("id")
-    reaction = data.get("reaction")
+    if reactor_actor_id is None:
+        return Response.json({"message": "Authentication required"}, status=401)
 
-    # TODO better error messages
-    if any(value is None for value in (comment_id, reactor_actor_id, reaction)):
-        return Response.json({}, status=400)
-
-    await datasette.get_internal_database().execute_write(
-        """
-          INSERT INTO datasette_comments_reactions(
-            id,
-            comment_id,
-            reactor_actor_id,
-            reaction
-          )
-          VALUES (
-            :id,
-            :comment_id,
-            :reactor_actor_id,
-            :reaction
-          )
-        """,
-        {
-            "id": id,
-            "comment_id": comment_id,
-            "reactor_actor_id": reactor_actor_id,
-            "reaction": reaction,
-        },
-        block=True,
+    internal_db = InternalDB(datasette.get_internal_database())
+    await internal_db.add_comment_reaction(
+        params.comment_id, reactor_actor_id, params.reaction
     )
-    return Response.json({"ok": True})
+    
+    return Response.json(ApiReactionAddResponse(ok=True).model_dump())
 
 
 @route(r"^/-/datasette-comments/api/reaction/remove$")

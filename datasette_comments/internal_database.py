@@ -300,3 +300,33 @@ class InternalDB:
             )
             for row in results.rows
         ]
+
+    async def add_comment_reaction(
+        self, comment_id: str, reactor_actor_id: str, reaction: str
+    ):
+        """Add a reaction to a comment"""
+        id = str(ULID()).lower()
+        SQL = """
+          INSERT INTO datasette_comments_reactions(
+            id,
+            comment_id,
+            reactor_actor_id,
+            reaction
+          )
+          VALUES (
+            :id,
+            :comment_id,
+            :reactor_actor_id,
+            :reaction
+          )
+        """
+        await self.db.execute_write(
+            SQL,
+            {
+                "id": id,
+                "comment_id": comment_id,
+                "reactor_actor_id": reactor_actor_id,
+                "reaction": reaction,
+            },
+            block=True,
+        )
