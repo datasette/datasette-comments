@@ -330,3 +330,23 @@ class InternalDB:
             },
             block=True,
         )
+
+    async def remove_comment_reaction(
+        self, comment_id: str, reactor_actor_id: str, reaction: str
+    ):
+        """Remove a reaction from a comment"""
+        SQL = """
+          DELETE FROM datasette_comments_reactions
+          WHERE comment_id = :comment_id
+            AND reactor_actor_id = :reactor_actor_id
+            AND reaction = :reaction
+        """
+        await self.db.execute_write(
+            SQL,
+            {
+                "comment_id": comment_id,
+                "reactor_actor_id": reactor_actor_id,
+                "reaction": reaction,
+            },
+            block=True,
+        )

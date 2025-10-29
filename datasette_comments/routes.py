@@ -28,6 +28,8 @@ from .contract import (
     CommentReactionItem,
     ApiReactionAddParams,
     ApiReactionAddResponse,
+    ApiReactionRemoveParams,
+    ApiReactionRemoveResponse,
 )
 
 # Route registry for decorator
@@ -495,31 +497,28 @@ async def reaction_remove(scope, receive, datasette, request):
     if request.method != "POST":
         return Response.text("POST required", status=405)
 
-    data = json.loads((await request.post_body()).decode("utf8"))
+    try:
+        params: ApiReactionRemoveParams = ApiReactionRemoveParams.model_validate_json(
+            await request.post_body()
+        )
+    except ValidationError as e:
+        return Response.json({"message": str(e)}, status=400)
+    except json.JSONDecodeError:
+        return Response.json({"message": "Invalid JSON"}, status=400)
 
-    comment_id = data.get("comment_id")
+    if request.actor is None:
+        return Response.json({"message": "Authentication required"}, status=401)
+    
     reactor_actor_id = request.actor.get("id")
-    reaction = data.get("reaction")
+    if reactor_actor_id is None:
+        return Response.json({"message": "Authentication required"}, status=401)
 
-    # TODO better error messages
-    if any(value is None for value in (comment_id, reactor_actor_id, reaction)):
-        return Response.json({}, status=400)
-
-    await datasette.get_internal_database().execute_write(
-        """
-          DELETE FROM datasette_comments_reactions
-          WHERE comment_id = :comment_id
-            AND reactor_actor_id = :reactor_actor_id
-            AND reaction = :reaction
-        """,
-        {
-            "comment_id": comment_id,
-            "reactor_actor_id": reactor_actor_id,
-            "reaction": reaction,
-        },
-        block=True,
+    internal_db = InternalDB(datasette.get_internal_database())
+    await internal_db.remove_comment_reaction(
+        params.comment_id, reactor_actor_id, params.reaction
     )
-    return Response.json({"ok": True})
+    
+    return Response.json(ApiReactionRemoveResponse(ok=True).model_dump())
 
 
 @route(r"^/-/datasette-comments/activity$")

@@ -205,3 +205,16 @@ class ApiReactionAddResponse(BaseModel):
     """Response for adding a reaction"""
 
     ok: Literal[True]
+
+
+class ApiReactionRemoveParams(BaseModel):
+    """Parameters for removing a reaction from a comment"""
+
+    comment_id: str = Field(..., description="The comment ID to remove reaction from")
+    reaction: str = Field(..., description="The reaction emoji or string to remove")
+
+
+class ApiReactionRemoveResponse(BaseModel):
+    """Response for removing a reaction"""
+
+    ok: Literal[True]
