@@ -30,6 +30,9 @@ from .contract import (
     ApiReactionAddResponse,
     ApiReactionRemoveParams,
     ApiReactionRemoveResponse,
+    ApiActivitySearchParams,
+    ApiActivitySearchResponse,
+    ActivitySearchItem,
 )
 
 # Route registry for decorator
@@ -555,44 +558,54 @@ async def autocomplete_mentions(scope, receive, datasette, request):
 @route(r"^/-/datasette-comments/api/activity_search$")
 async def activity_search(scope, receive, datasette, request):
     """Search endpoint for the acitivity page."""
-    search_comments = request.args.get("searchComments")
-    author = request.args.get("author")
-    database = request.args.get("database")
-    table = request.args.get("table")
-    is_resolved = request.args.get("isResolved") == "1"
-    contains_tag = request.args.getlist("containsTag")
+    # Parse query parameters into the params model
+    search_params = ApiActivitySearchParams(
+        searchComments=request.args.get("searchComments"),
+        author=request.args.get("author"),
+        database=request.args.get("database"),
+        table=request.args.get("table"),
+        isResolved=(
+            True if request.args.get("isResolved") == "1" else 
+            False if request.args.get("isResolved") == "0" else 
+            None
+        ),
+        containsTag=request.args.getlist("containsTag") or None,
+    )
 
     WHERE = "1"
     params = []
 
     # when provided, searchComments adds a `LIKE '%query%'` constraint
-    if search_comments:
+    if search_params.searchComments:
         WHERE += " AND comments.contents LIKE printf('%%%s%%', ?)"
-        params.append(search_comments)
+        params.append(search_params.searchComments)
 
-    if author:
+    if search_params.author:
         # author is the "username", need to resolve the actor_id from it
         for users in pm.hook.datasette_comments_users(datasette=datasette):
             for user in await await_me_maybe(users):
-                if user.get("username") == author:
+                if user.get("username") == search_params.author:
                     WHERE += " AND comments.author_actor_id = ?"
                     params.append(user.get("id"))
                     break
-    if database:
+    if search_params.database:
         WHERE += " AND threads.target_database = ?"
-        params.append(database)
+        params.append(search_params.database)
 
-    if table:
+    if search_params.table:
         WHERE += " AND threads.target_table = ?"
-        params.append(table)
+        params.append(search_params.table)
 
-    WHERE += f" AND {'' if is_resolved else 'NOT'} threads.marked_resolved"
+    # Handle isResolved: None means no filter, True means resolved, False means unresolved
+    if search_params.isResolved is not None:
+        WHERE += f" AND {'' if search_params.isResolved else 'NOT'} threads.marked_resolved"
 
-    for tag in contains_tag:
-        if not tag:
-            continue
-        WHERE += " AND ? in (select value from json_each(comments.hashtags))"
-        params.append(tag)
+    if search_params.containsTag:
+        for tag in search_params.containsTag:
+            if not tag:
+                continue
+            WHERE += " AND ? in (select value from json_each(comments.hashtags))"
+            params.append(tag)
 
     allowed_actor_tables, p = await datasette.allowed_resources_sql(
         actor=request.actor, action="view-comments"
@@ -634,29 +647,44 @@ async def activity_search(scope, receive, datasette, request):
     actors = await datasette.actors_from_ids(actor_ids)
 
     # augment the rows with extra metadata
+    items = []
     for row in data:
         author = author_from_actor(datasette, actors, row["author_actor_id"])
-        row["author"] = author.model_dump()
 
         # if there's a "label column" for the table, then resolve the "label" for the row
         label_column = await get_label_column(
             datasette, row["target_database"], row["target_table"]
         )
+        target_label = None
         if label_column:
             try:
                 rowids = json.loads(row["target_row_ids"])
             except Exception:
-                row["target_label"] = None
-                continue
-
-            target_label = await get_label_for_row(
-                datasette.databases[row["target_database"]],
-                row["target_table"],
-                label_column,
-                rowids,
+                target_label = None
+            else:
+                target_label = await get_label_for_row(
+                    datasette.databases[row["target_database"]],
+                    row["target_table"],
+                    label_column,
+                    rowids,
+                )
+        
+        items.append(
+            ActivitySearchItem(
+                author_actor_id=row["author_actor_id"],
+                contents=row["contents"],
+                created_at=row["created_at"],
+                created_duration_seconds=row["created_duration_seconds"],
+                target_type=row["target_type"],
+                target_database=row["target_database"],
+                target_table=row["target_table"],
+                target_row_ids=row["target_row_ids"],
+                target_column=row["target_column"],
+                author=author,
+                target_label=target_label,
             )
-            row["target_label"] = target_label
-        else:
-            row["target_label"] = None
+        )
 
-    return Response.json({"data": data})
+    # Convert to typed response
+    response = ApiActivitySearchResponse(data=items)
+    return Response.json(response.model_dump())

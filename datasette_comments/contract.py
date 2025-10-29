@@ -218,3 +218,56 @@ class ApiReactionRemoveResponse(BaseModel):
     """Response for removing a reaction"""
 
     ok: Literal[True]
+
+
+class ApiActivitySearchParams(BaseModel):
+    """Parameters for activity search endpoint"""
+
+    searchComments: Optional[str] = Field(
+        None, description="Search term to filter comments by content"
+    )
+    author: Optional[str] = Field(
+        None, description="Username to filter comments by author"
+    )
+    database: Optional[str] = Field(
+        None, description="Database name to filter comments"
+    )
+    table: Optional[str] = Field(None, description="Table name to filter comments")
+    isResolved: Optional[bool] = Field(
+        None, description="Filter by resolved status (true for resolved, false for unresolved)"
+    )
+    containsTag: Optional[List[str]] = Field(
+        None, description="List of hashtags that comments must contain"
+    )
+
+
+class ActivitySearchItem(BaseModel):
+    """A single activity search result item"""
+
+    author_actor_id: str = Field(..., description="The actor ID of the comment author")
+    contents: str = Field(..., description="The comment contents")
+    created_at: str = Field(..., description="Timestamp when the comment was created")
+    created_duration_seconds: float = Field(
+        ..., description="Seconds since the comment was created"
+    )
+    target_type: str = Field(..., description="The type of target (e.g., 'row')")
+    target_database: str = Field(..., description="The database name")
+    target_table: str = Field(..., description="The table name")
+    target_row_ids: str = Field(
+        ..., description="JSON-encoded list of row IDs for the target"
+    )
+    target_column: Optional[str] = Field(
+        None, description="The column name if target is a column"
+    )
+    author: Author = Field(..., description="Author information")
+    target_label: Optional[str] = Field(
+        None, description="Resolved label for the target row, if available"
+    )
+
+
+class ApiActivitySearchResponse(BaseModel):
+    """Response for activity search endpoint"""
+
+    data: List[ActivitySearchItem] = Field(
+        ..., description="List of activity search results"
+    )
