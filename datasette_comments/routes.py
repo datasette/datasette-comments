@@ -572,114 +572,68 @@ async def activity_search(scope, receive, datasette, request):
         containsTag=request.args.getlist("containsTag") or None,
     )
 
-    WHERE = "1"
-    params = []
-
-    # when provided, searchComments adds a `LIKE '%query%'` constraint
-    if search_params.searchComments:
-        WHERE += " AND comments.contents LIKE printf('%%%s%%', ?)"
-        params.append(search_params.searchComments)
-
+    # Build author username -> actor_id mapping if author filter is provided
+    author_actor_id_map = None
     if search_params.author:
-        # author is the "username", need to resolve the actor_id from it
+        author_actor_id_map = {}
         for users in pm.hook.datasette_comments_users(datasette=datasette):
             for user in await await_me_maybe(users):
-                if user.get("username") == search_params.author:
-                    WHERE += " AND comments.author_actor_id = ?"
-                    params.append(user.get("id"))
-                    break
-    if search_params.database:
-        WHERE += " AND threads.target_database = ?"
-        params.append(search_params.database)
+                username = user.get("username")
+                if username:
+                    author_actor_id_map[username] = user.get("id")
 
-    if search_params.table:
-        WHERE += " AND threads.target_table = ?"
-        params.append(search_params.table)
-
-    # Handle isResolved: None means no filter, True means resolved, False means unresolved
-    if search_params.isResolved is not None:
-        WHERE += f" AND {'' if search_params.isResolved else 'NOT'} threads.marked_resolved"
-
-    if search_params.containsTag:
-        for tag in search_params.containsTag:
-            if not tag:
-                continue
-            WHERE += " AND ? in (select value from json_each(comments.hashtags))"
-            params.append(tag)
-
-    allowed_actor_tables, p = await datasette.allowed_resources_sql(
+    # Get allowed tables SQL
+    allowed_actor_tables_sql, allowed_actor_params = await datasette.allowed_resources_sql(
         actor=request.actor, action="view-comments"
     )
-    sql = f"""
-    WITH actor_tables(database_name, table_name, reason) AS (
-      {allowed_actor_tables}
-    ),
-    final as (
-      SELECT
-        comments.author_actor_id,
-        comments.contents,
-        comments.created_at,
-        (strftime('%s', 'now') - strftime('%s', comments.created_at)) as created_duration_seconds,
-        threads.target_type,
-        threads.target_database,
-        threads.target_table,
-        threads.target_row_ids,
-        threads.target_column
-      FROM datasette_comments_comments AS comments
-      LEFT JOIN datasette_comments_threads AS threads ON threads.id = comments.thread_id
-      LEFT JOIN actor_tables ON threads.target_database = actor_tables.database_name
-        AND threads.target_table = actor_tables.table_name
-      WHERE 
-        threads.target_type = 'row'
-        AND actor_tables.database_name IS NOT NULL
-        AND actor_tables.table_name IS NOT NULL
-        AND {WHERE}
-      ORDER BY comments.created_at DESC
-      LIMIT 100
-    )
-    select * from final;
-    """
-    results = await datasette.get_internal_database().execute(sql, params)
-    data = [dict(row) for row in results.rows]
-    author = await author_from_request(datasette, request)
 
-    actor_ids = set(row["author_actor_id"] for row in data)
+    # Execute the search query
+    internal_db = InternalDB(datasette.get_internal_database())
+    rows = await internal_db.activity_search(
+        allowed_actor_tables_sql,
+        allowed_actor_params,
+        search_params,
+        author_actor_id_map,
+    )
+
+    # Get all actors for the results
+    actor_ids = set(row.author_actor_id for row in rows)
     actors = await datasette.actors_from_ids(actor_ids)
 
-    # augment the rows with extra metadata
+    # Augment the rows with extra metadata
     items = []
-    for row in data:
-        author = author_from_actor(datasette, actors, row["author_actor_id"])
+    for row in rows:
+        author = author_from_actor(datasette, actors, row.author_actor_id)
 
         # if there's a "label column" for the table, then resolve the "label" for the row
         label_column = await get_label_column(
-            datasette, row["target_database"], row["target_table"]
+            datasette, row.target_database, row.target_table
         )
         target_label = None
         if label_column:
             try:
-                rowids = json.loads(row["target_row_ids"])
+                rowids = json.loads(row.target_row_ids)
             except Exception:
                 target_label = None
             else:
                 target_label = await get_label_for_row(
-                    datasette.databases[row["target_database"]],
-                    row["target_table"],
+                    datasette.databases[row.target_database],
+                    row.target_table,
                     label_column,
                     rowids,
                 )
         
         items.append(
             ActivitySearchItem(
-                author_actor_id=row["author_actor_id"],
-                contents=row["contents"],
-                created_at=row["created_at"],
-                created_duration_seconds=row["created_duration_seconds"],
-                target_type=row["target_type"],
-                target_database=row["target_database"],
-                target_table=row["target_table"],
-                target_row_ids=row["target_row_ids"],
-                target_column=row["target_column"],
+                author_actor_id=row.author_actor_id,
+                contents=row.contents,
+                created_at=row.created_at,
+                created_duration_seconds=row.created_duration_seconds,
+                target_type=row.target_type,
+                target_database=row.target_database,
+                target_table=row.target_table,
+                target_row_ids=row.target_row_ids,
+                target_column=row.target_column,
                 author=author,
                 target_label=target_label,
             )

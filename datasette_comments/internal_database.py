@@ -1,6 +1,7 @@
 from typing import List
 from datasette.database import Database
 from .contract import (
+    ApiActivitySearchParams,
     ApiThreadNewParams,
     ApiThreadNewParamsTable,
     ApiThreadNewParamsRow,
@@ -44,6 +45,68 @@ class TableViewRowThread:
 class CommentReaction:
     reactor_actor_id: str
     reaction: str
+
+
+@dataclass
+class ActivitySearchRow:
+    author_actor_id: str
+    contents: str
+    created_at: str
+    created_duration_seconds: float
+    target_type: str
+    target_database: str
+    target_table: str
+    target_row_ids: str
+    target_column: str | None
+
+
+def _activity_search_where(
+    search_params: ApiActivitySearchParams,
+    author_actor_id_map: dict[str, str] | None = None,
+) -> tuple[str, list]:
+    """Build WHERE clause and params for activity search.
+    
+    Args:
+        search_params: The search parameters from the API
+        author_actor_id_map: Optional dict mapping username -> actor_id
+        
+    Returns:
+        Tuple of (WHERE clause string, list of params)
+    """
+    WHERE = "1"
+    params = []
+
+    # when provided, searchComments adds a `LIKE '%query%'` constraint
+    if search_params.searchComments:
+        WHERE += " AND comments.contents LIKE printf('%%%s%%', ?)"
+        params.append(search_params.searchComments)
+
+    if search_params.author and author_actor_id_map:
+        actor_id = author_actor_id_map.get(search_params.author)
+        if actor_id:
+            WHERE += " AND comments.author_actor_id = ?"
+            params.append(actor_id)
+
+    if search_params.database:
+        WHERE += " AND threads.target_database = ?"
+        params.append(search_params.database)
+
+    if search_params.table:
+        WHERE += " AND threads.target_table = ?"
+        params.append(search_params.table)
+
+    # Handle isResolved: None means no filter, True means resolved, False means unresolved
+    if search_params.isResolved is not None:
+        WHERE += f" AND {'' if search_params.isResolved else 'NOT'} threads.marked_resolved"
+
+    if search_params.containsTag:
+        for tag in search_params.containsTag:
+            if not tag:
+                continue
+            WHERE += " AND ? in (select value from json_each(comments.hashtags))"
+            params.append(tag)
+
+    return WHERE, params
 
 
 class InternalDB:
@@ -350,3 +413,75 @@ class InternalDB:
             },
             block=True,
         )
+
+    async def activity_search(
+        self,
+        allowed_actor_tables_sql: str,
+        allowed_actor_params: dict,
+        search_params: ApiActivitySearchParams,
+        author_actor_id_map: dict[str, str] | None = None,
+    ) -> list[ActivitySearchRow]:
+        """Search for activity based on the given parameters.
+        
+        Args:
+            allowed_actor_tables_sql: SQL CTE for allowed tables
+            allowed_actor_params: Parameters for the allowed tables SQL
+            search_params: The search parameters
+            author_actor_id_map: Optional dict mapping username -> actor_id
+            
+        Returns:
+            List of ActivitySearchRow results
+        """
+        WHERE, where_params = _activity_search_where(search_params, author_actor_id_map)
+        
+        sql = f"""
+        WITH actor_tables(database_name, table_name, reason) AS (
+          {allowed_actor_tables_sql}
+        ),
+        final as (
+          SELECT
+            comments.author_actor_id,
+            comments.contents,
+            comments.created_at,
+            (strftime('%s', 'now') - strftime('%s', comments.created_at)) as created_duration_seconds,
+            threads.target_type,
+            threads.target_database,
+            threads.target_table,
+            threads.target_row_ids,
+            threads.target_column
+          FROM datasette_comments_comments AS comments
+          LEFT JOIN datasette_comments_threads AS threads ON threads.id = comments.thread_id
+          LEFT JOIN actor_tables ON threads.target_database = actor_tables.database_name
+            AND threads.target_table = actor_tables.table_name
+          WHERE 
+            threads.target_type = 'row'
+            AND actor_tables.database_name IS NOT NULL
+            AND actor_tables.table_name IS NOT NULL
+            AND {WHERE}
+          ORDER BY comments.created_at DESC
+          LIMIT 100
+        )
+        select * from final;
+        """
+        
+        # Combine the allowed_actor_params with where_params
+        # TODO: isn't allowed_actor_params a dict, and where_params a list?
+        # cant mix named and unnamed params like this
+        all_params = list(allowed_actor_params) + where_params
+        
+        results = await self.db.execute(sql, all_params)
+        
+        return [
+            ActivitySearchRow(
+                author_actor_id=row["author_actor_id"],
+                contents=row["contents"],
+                created_at=row["created_at"],
+                created_duration_seconds=row["created_duration_seconds"],
+                target_type=row["target_type"],
+                target_database=row["target_database"],
+                target_table=row["target_table"],
+                target_row_ids=row["target_row_ids"],
+                target_column=row["target_column"],
+            )
+            for row in results.rows
+        ]
