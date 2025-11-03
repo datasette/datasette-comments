@@ -10,9 +10,8 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License"
 ]
 dependencies = [
-  #"datasette>=1.0a6", 
-  #"datasette @ git+https://github.com/simonw/datasette.git@resource-based-permissions",
-  "datasette @ file:///Users/alex/projects/datasette",
+  #"datasette>=1.0a20", 
+  "datasette @ git+https://github.com/simonw/datasette.git@b212895b9763068599e535fd7cd77fd5b8e2b14c",
   "pydantic>2.0,<3.0",
   "sqlite-utils", "python-ulid", "sqlite-migrate==0.1b0"]
 
