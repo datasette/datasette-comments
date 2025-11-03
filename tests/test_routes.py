@@ -8,7 +8,6 @@ def cookie_for_actor(datasette, actor_id):
 
 @pytest.mark.asyncio
 async def test_routes_thread_comments(datasette_with_plugin):
-    print(datasette_with_plugin.databases)
     response = await datasette_with_plugin.client.post(
         "/-/datasette-comments/api/thread/new",
         json={
