@@ -1,5 +1,6 @@
 from typing import List, Optional
-from datasette import hookimpl, Response, Permission, Forbidden
+from datasette import hookimpl, Response, Forbidden
+from datasette.permissions import Action
 from datasette.utils import await_me_maybe, tilde_decode, tilde_encode
 from datasette.plugins import pm
 from pathlib import Path
@@ -68,14 +69,14 @@ def check_permission(write=False):
         @wraps(func)
         async def wrapper(scope, receive, datasette, request):
             if write:
-                result = await datasette.permission_allowed(
-                    request.actor, PERMISSION_ACCESS_NAME, default=False
+                result = await datasette.allowed(
+                    action=PERMISSION_ACCESS_NAME, actor=request.actor
                 )
             else:
-                result = await datasette.permission_allowed(
-                    request.actor, PERMISSION_ACCESS_NAME, default=False
-                ) or await datasette.permission_allowed(
-                    request.actor, PERMISSION_READONLY_NAME, default=False
+                result = await datasette.allowed(
+                    action=PERMISSION_ACCESS_NAME, actor=request.actor
+                ) or await datasette.allowed(
+                    action=PERMISSION_READONLY_NAME, actor=request.actor
                 )
             if not result:
                 raise Forbidden("Permission denied for datasette-comments")
@@ -229,9 +230,9 @@ class Routes:
                 "target_database": database,
                 "target_table": table if type != "database" else None,
                 "target_column": column if type in ("column", "row", "value") else None,
-                "target_row_ids": json.dumps(rowids)
-                if type in ("row", "value")
-                else None,
+                "target_row_ids": (
+                    json.dumps(rowids) if type in ("row", "value") else None
+                ),
             }
 
             cursor.execute(
@@ -661,23 +662,17 @@ async def get_label_for_row(db, table: str, label_column: str, rowids: List[str]
 
 
 @hookimpl
-def register_permissions(datasette):
+def register_actions(datasette):
     return [
-        Permission(
+        Action(
             name=PERMISSION_ACCESS_NAME,
-            abbr=None,
-            description="Can write and create datasette-comments threads, comments and reactions.",
-            takes_database=False,
-            takes_resource=False,
-            default=False,
+            description=(
+                "Can write and create datasette-comments threads, comments and reactions."
+            ),
         ),
-        Permission(
+        Action(
             name=PERMISSION_READONLY_NAME,
-            abbr=None,
             description="Can read datasette-comments threads, comments and reactions.",
-            takes_database=False,
-            takes_resource=False,
-            default=False,
         ),
     ]
 
@@ -685,10 +680,10 @@ def register_permissions(datasette):
 @hookimpl
 def menu_links(datasette, actor):
     async def inner():
-        if await datasette.permission_allowed(
-            actor, PERMISSION_ACCESS_NAME, default=False
-        ) or await datasette.permission_allowed(
-            actor, PERMISSION_READONLY_NAME, default=False
+        if await datasette.allowed(
+            action=PERMISSION_ACCESS_NAME, actor=actor
+        ) or await datasette.allowed(
+            action=PERMISSION_READONLY_NAME, actor=actor
         ):
             return [
                 {
@@ -796,10 +791,10 @@ SUPPORTED_VIEWS = ("index", "database", "table", "row")
 async def should_inject_content_script(datasette, request, view_name):
     if not request:
         return False
-    if await datasette.permission_allowed(
-        request.actor, PERMISSION_ACCESS_NAME, default=False
-    ) or await datasette.permission_allowed(
-        request.actor, PERMISSION_READONLY_NAME, default=False
+    if await datasette.allowed(
+        action=PERMISSION_ACCESS_NAME, actor=request.actor
+    ) or await datasette.allowed(
+        action=PERMISSION_READONLY_NAME, actor=request.actor
     ):
         return view_name in SUPPORTED_VIEWS
     return False
@@ -817,8 +812,8 @@ async def extra_body_script(
                 "database": database,
                 "table": table,
                 "author": asdict(author),
-                "readonly_viewer": await datasette.permission_allowed(
-                    request.actor, PERMISSION_READONLY_NAME, default=False
+                "readonly_viewer": await datasette.allowed(
+                    action=PERMISSION_READONLY_NAME, actor=request.actor
                 ),
             }
         )
