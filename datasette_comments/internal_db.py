@@ -90,7 +90,12 @@ async def get_label_column(datasette, db: str, table: str):
     lookup = cached_label_columns.get(key)
     if lookup:
         return lookup
-    result = await datasette.databases[db].label_column_for_table(table)
+    if db not in datasette.databases:
+        return None
+    try:
+        result = await datasette.databases[db].label_column_for_table(table)
+    except Exception:
+        return None
     cached_label_columns[key] = result
     return result
 
