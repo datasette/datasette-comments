@@ -18,8 +18,8 @@ dev:
       --internal internal.db \
       legislators.db fixtures.db internal.db big.db
 
-test:
-  pytest
+test *options:
+  uv run python -m pytest {{options}}
 
 format:
   black .
