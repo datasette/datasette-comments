@@ -26,7 +26,9 @@ dev *flags:
     uv run \
       --with datasette-debug-gotham \
       datasette \
+      --plugins-dir examples \
       -s permissions.datasette-comments-access.id '*' \
+      -s permissions.profile_access.id '*' \
       --internal internal.db \
       legislators.db fixtures.db internal.db big.db \
       {{flags}}
