@@ -4,7 +4,7 @@
 {% block title %}Comments{% endblock %}
 
 {% block extra_head %}
-{{ datasette_comments_vite_entry("src/pages/activity/index.tsx") | safe }}
+{{ datasette_comments_vite_entry(entrypoint) | safe }}
 {% endblock %}
 
 {% block content %}

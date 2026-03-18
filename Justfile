@@ -21,25 +21,25 @@ frontend-dev:
   cd datasette_comments/frontend && npx vite --port 5179
 
 # Development servers
-dev:
-  DATASETTE_COMMENTS_VITE_DEV=http://localhost:5179/ \
-  DATASETTE_SECRET=abc123 watchexec --signal SIGKILL --restart --clear -e py,html,sql -- \
-    uv run python -m datasette \
-      --root \
-      --plugins-dir=tests/basic_plugin/ \
-      --metadata tests/basic_plugin/metadata.yaml \
+dev *flags:
+  DATASETTE_SECRET=abc123 \
+    uv run \
+      --with datasette-debug-gotham \
+      datasette \
+      -s permissions.datasette-comments-access.id '*' \
       --internal internal.db \
-      legislators.db fixtures.db internal.db big.db
+      legislators.db fixtures.db internal.db big.db \
+      {{flags}}
 
-dev-with-hmr:
+dev-with-hmr *flags:
   DATASETTE_COMMENTS_VITE_DEV=http://localhost:5179/ \
-  DATASETTE_SECRET=abc123 watchexec --signal SIGKILL --restart --clear -e py,html,sql -- \
-    uv run python -m datasette \
-      --root \
-      --plugins-dir=tests/basic_plugin/ \
-      --metadata tests/basic_plugin/metadata.yaml \
-      --internal internal.db \
-      legislators.db fixtures.db internal.db big.db
+  watchexec \
+    --stop-signal SIGKILL \
+    -e py,html \
+    --ignore '*.db' \
+    --restart \
+    --clear -- \
+    just dev {{flags}}
 
 test *options:
   uv run python -m pytest {{options}}

@@ -9,6 +9,9 @@ async def activity_view(datasette=None, request=None):
     return Response.html(
         await datasette.render_template(
             "activity_view.html",
+            {
+                "entrypoint": "src/pages/activity/index.tsx",
+            },
             request=request,
         )
     )
