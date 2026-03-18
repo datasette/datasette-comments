@@ -207,6 +207,7 @@ source = { editable = "." }
 dependencies = [
     { name = "datasette" },
     { name = "datasette-plugin-router" },
+    { name = "datasette-sidebar" },
     { name = "datasette-user-profiles" },
     { name = "datasette-vite" },
     { name = "pydantic" },
@@ -226,6 +227,7 @@ dev = [
 requires-dist = [
     { name = "datasette", specifier = ">=1.0a21" },
     { name = "datasette-plugin-router", specifier = ">=0.0.1a2" },
+    { name = "datasette-sidebar", specifier = ">=0.0.1a1" },
     { name = "datasette-user-profiles", specifier = ">=0.0.1a1" },
     { name = "datasette-vite", specifier = ">=0.0.1a3" },
     { name = "pydantic", specifier = ">=2" },
@@ -253,6 +255,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6c/bb/be85dd7b4e17b697b50bf7fc7b27e2c8c2d4b7da87de898db5aac1b22b1e/datasette_plugin_router-0.0.1a2.tar.gz", hash = "sha256:a3c85209c22bbdf91f747decd5886a5cfff65b928a4b77270cc2724e21d14a2e", size = 10862, upload-time = "2026-01-27T18:15:05.345Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0f/00/3dba540ef88844732e2f4dc324f79119cb57aef7e85b76e1fdaa2fcccf99/datasette_plugin_router-0.0.1a2-py3-none-any.whl", hash = "sha256:5be37425d992b1f3591caddb48454825d0036edcc1073b7cb1da484acf5dba4b", size = 11904, upload-time = "2026-01-27T18:15:04.351Z" },
+]
+
+[[package]]
+name = "datasette-sidebar"
+version = "0.0.1a1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "datasette" },
+    { name = "datasette-plugin-router" },
+    { name = "datasette-vite" },
+    { name = "pydantic" },
+    { name = "python-ulid" },
+    { name = "sqlite-migrate" },
+    { name = "sqlite-utils" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/98/70/6b3d9b0fa5375ebc05ceba343e8d6d824aa3c7cfd1ed3e73051c569d7dda/datasette_sidebar-0.0.1a1.tar.gz", hash = "sha256:548ac3c1035c841b713ecf78d3c1de79417be2e78158ba2c279c6802dbf5bc2a", size = 31801, upload-time = "2026-03-18T22:55:43.493Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/90/2a/19c0202bec7e7752e23c642c4c2e506bd4cbdb1979428639cf73bd82db8f/datasette_sidebar-0.0.1a1-py3-none-any.whl", hash = "sha256:ab5c73bc272d1a8ca5382eab66dcc7684fd07eb519f7694f7eeb9a5fc200e0e1", size = 33894, upload-time = "2026-03-18T22:55:42.078Z" },
 ]
 
 [[package]]
