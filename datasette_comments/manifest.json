@@ -1,6 +1,6 @@
 {
-  "_Thread-Csvdgydl.js": {
-    "file": "static/gen/Thread-Csvdgydl.js",
+  "_Thread-B89PjXBH.js": {
+    "file": "static/gen/Thread-B89PjXBH.js",
     "name": "Thread",
     "css": [
       "static/gen/Thread-D__iTDGk.css"
@@ -11,21 +11,21 @@
     "src": "_Thread-D__iTDGk.css"
   },
   "src/content_script/index.tsx": {
-    "file": "static/gen/content_script-pKLYQc7T.js",
+    "file": "static/gen/content_script-D6fFM_QK.js",
     "name": "content_script",
     "src": "src/content_script/index.tsx",
     "isEntry": true,
     "imports": [
-      "_Thread-Csvdgydl.js"
+      "_Thread-B89PjXBH.js"
     ]
   },
   "src/pages/activity/index.tsx": {
-    "file": "static/gen/activity-D46XIZ-7.js",
+    "file": "static/gen/activity-Dubqwh_t.js",
     "name": "activity",
     "src": "src/pages/activity/index.tsx",
     "isEntry": true,
     "imports": [
-      "_Thread-Csvdgydl.js"
+      "_Thread-B89PjXBH.js"
     ],
     "css": [
       "static/gen/activity-LwDnNWO4.css"

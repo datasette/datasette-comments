@@ -27,7 +27,14 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** Ok */
+                            ok: boolean;
+                            /** Data */
+                            data: components["schemas"]["CommentData"][];
+                        };
+                    };
                 };
             };
         };
@@ -545,6 +552,56 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Author */
+        Author: {
+            /** Actor Id */
+            actor_id: string;
+            /**
+             * Name
+             * @default null
+             */
+            name: string | null;
+            /**
+             * Profile Photo Url
+             * @default null
+             */
+            profile_photo_url: string | null;
+            /**
+             * Username
+             * @default null
+             */
+            username: string | null;
+        };
+        /** CommentData */
+        CommentData: {
+            /** Id */
+            id: string;
+            author: components["schemas"]["Author"];
+            /** Contents */
+            contents: string;
+            /** Created At */
+            created_at: string;
+            /** Created Duration Seconds */
+            created_duration_seconds: number;
+            /** Render Nodes */
+            render_nodes: components["schemas"]["RenderNode"][];
+            /** Reactions */
+            reactions: components["schemas"]["ReactionData"][];
+        };
+        /** ReactionData */
+        ReactionData: {
+            /** Reactor Actor Id */
+            reactor_actor_id: string;
+            /** Reaction */
+            reaction: string;
+        };
+        /** RenderNode */
+        RenderNode: {
+            /** Node Type */
+            node_type: string;
+            /** Value */
+            value: string;
+        };
         /** RowThreadItem */
         RowThreadItem: {
             /** Id */
@@ -572,26 +629,6 @@ export interface components {
         RowViewThreadsData: {
             /** Row Threads */
             row_threads: string[];
-        };
-        /** Author */
-        Author: {
-            /** Actor Id */
-            actor_id: string;
-            /**
-             * Name
-             * @default null
-             */
-            name: string | null;
-            /**
-             * Profile Photo Url
-             * @default null
-             */
-            profile_photo_url: string | null;
-            /**
-             * Username
-             * @default null
-             */
-            username: string | null;
         };
         /** MentionSuggestion */
         MentionSuggestion: {

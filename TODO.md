@@ -22,8 +22,8 @@
 ## Phase 3: Type Safety — API Pipeline
 - [x] 3.1 Add OpenAPI spec generation
 - [x] 3.2 Create typed openapi-fetch client
-- [ ] 3.3 Replace hand-written Api class
-- [ ] 3.4 Delete old lib/api.ts
+- [x] 3.3 Replace hand-written Api class with openapi-fetch client
+- [x] 3.4 Rewrite lib/api.ts (now wraps openapi-fetch client)
 
 ## Phase 4: Type Safety — Page Data Pipeline
 - [x] 4.1 Create scripts/typegen-pagedata.py

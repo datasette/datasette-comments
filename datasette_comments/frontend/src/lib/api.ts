@@ -1,43 +1,18 @@
-async function api(path: string, params?: { method?: string; data?: any }) {
-  const { method, data } = params ?? {};
-  return fetch(`${path}`, {
-    method,
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: data ? JSON.stringify(data) : undefined,
-  }).then((response) => response.json());
-}
+import createClient from "openapi-fetch";
+import type { paths, components } from "../generated/api";
 
-// map EXACTLY to the Python Author class
-export interface Author {
-  actor_id: string;
-  name: string;
-  profile_photo_url: string | null;
-  username: string | null;
-}
+const client = createClient<paths>({ baseUrl: "" });
+
+export type Author = components["schemas"]["Author"];
+export type CommentData = components["schemas"]["CommentData"];
+export type ReactionData = components["schemas"]["ReactionData"];
+export type RenderNode = components["schemas"]["RenderNode"];
+export type ActivitySearchResult = components["schemas"]["ActivitySearchResult"];
 
 export type CommentTargetType =
   | { type: "database"; database: string }
   | { type: "table"; database: string; table: string }
   | { type: "row"; database: string; table: string; rowids: string };
-
-export interface ReactionData {
-  reactor_actor_id: string;
-  reaction: string;
-}
-
-export interface CommentData {
-  id: string;
-  author: Author;
-  contents: string;
-  created_at: string;
-  created_duration_seconds: number;
-  render_nodes: {
-    node_type: "raw" | "mention" | "url" | "tag" | "linebreak";
-    value: string;
-  }[];
-  reactions: ReactionData[];
-}
 
 export interface ActivitySearchParams {
   searchComments: string | null;
@@ -47,175 +22,119 @@ export interface ActivitySearchParams {
   database: string | null;
   table: string | null;
 }
-export interface ActivtySearchResult {
-  author_actor_id: string;
-  author: Author;
-  contents: string;
-  created_at: string;
-  created_duration_seconds: number;
-  target_type: "database" | "table" | "columns" | "row" | "value";
-  target_database: string;
-  target_table: string | null;
-  target_row_ids: string | null;
-  target_columns: string | null;
-  target_label: string | null;
-}
 
+// Thin wrapper that maintains the same call signatures as the old Api class
+// but uses the typed openapi-fetch client under the hood.
 export class Api {
-  static async threadNew(
-    target: CommentTargetType,
-    comment: string
-  ): Promise<{
-    ok: boolean;
-    thread_id: string;
-  }> {
-    return api("/-/datasette-comments/api/thread/new", {
-      method: "POST",
-      data: {
-        ...target,
-        comment,
-      },
-    });
+  static async threadNew(target: CommentTargetType, comment: string) {
+    const { data } = await client.POST(
+      "/-/datasette-comments/api/thread/new",
+      { body: { ...target, comment } }
+    );
+    return data!;
   }
+
   static async tableViewThreads(
     database: string,
     table: string,
     rowids: string[]
-  ): Promise<{
-    ok: boolean;
-    data: {
-      table_threads: {
-        id: string;
-      }[];
-      column_threads: {}[];
-      row_threads: {
-        id: string;
-        rowids: string;
-      }[];
-      value_threads: {}[];
-    };
-  }> {
-    return api("/-/datasette-comments/api/threads/table_view", {
-      method: "POST",
-      data: {
-        database,
-        table,
-        rowids,
-      },
-    });
+  ) {
+    const { data } = await client.POST(
+      "/-/datasette-comments/api/threads/table_view",
+      { body: { database, table, rowids } }
+    );
+    return data!;
   }
+
   static async rowViewThreads(
     database: string,
     table: string,
     rowids: string
-  ): Promise<{
-    ok: boolean;
-    data: {
-      row_threads: string[];
-    };
-  }> {
-    return api("/-/datasette-comments/api/threads/row_view", {
-      method: "POST",
-      data: {
-        database,
-        table,
-        rowids,
-      },
-    });
-  }
-  static async threadMarkResolved(thread_id: string): Promise<{
-    ok: boolean;
-  }> {
-    return api("/-/datasette-comments/api/threads/mark_resolved", {
-      method: "POST",
-      data: {
-        thread_id,
-      },
-    });
-  }
-
-  static async threadComments(thread_id: string): Promise<{
-    ok: boolean;
-    data: CommentData[];
-  }> {
-    return api(`/-/datasette-comments/api/thread/comments/${thread_id}`);
-  }
-  static async commentAdd(
-    thread_id: string,
-    contents: string
-  ): Promise<{
-    ok: boolean;
-  }> {
-    return api(`/-/datasette-comments/api/thread/comment/add`, {
-      method: "POST",
-      data: {
-        thread_id,
-        contents,
-      },
-    });
-  }
-  static async reactionAdd(
-    comment_id: string,
-    reaction: string
-  ): Promise<{
-    ok: boolean;
-  }> {
-    return api(`/-/datasette-comments/api/reaction/add`, {
-      method: "POST",
-      data: {
-        comment_id,
-        reaction,
-      },
-    });
-  }
-  static async reactionRemove(
-    comment_id: string,
-    reaction: string
-  ): Promise<{
-    ok: boolean;
-  }> {
-    return api(`/-/datasette-comments/api/reaction/remove`, {
-      method: "POST",
-      data: {
-        comment_id,
-        reaction,
-      },
-    });
-  }
-  static async reactions(comment_id: string): Promise<
-    {
-      reactor_actor_id: string;
-      reaction: string;
-    }[]
-  > {
-    return api(`/-/datasette-comments/api/reactions/${comment_id}`);
-  }
-  static async autocomplete_mentions(prefix: string): Promise<{
-    suggestions: {
-      username: string;
-      author: Author;
-    }[];
-  }> {
-    return api(
-      `/-/datasette-comments/api/autocomplete/mentions?prefix=${encodeURIComponent(
-        prefix
-      )}`
+  ) {
+    const { data } = await client.POST(
+      "/-/datasette-comments/api/threads/row_view",
+      { body: { database, table, rowids } }
     );
+    return data!;
   }
 
-  static async activitySearch(params: ActivitySearchParams): Promise<{
-    data: ActivtySearchResult[];
-  }> {
+  static async threadMarkResolved(thread_id: string) {
+    const { data } = await client.POST(
+      "/-/datasette-comments/api/threads/mark_resolved",
+      { body: { thread_id } }
+    );
+    return data!;
+  }
+
+  static async threadComments(thread_id: string) {
+    const { data } = await client.GET(
+      "/-/datasette-comments/api/thread/comments/{thread_id}",
+      { params: { path: { thread_id } } }
+    );
+    return data!;
+  }
+
+  static async commentAdd(thread_id: string, contents: string) {
+    const { data } = await client.POST(
+      "/-/datasette-comments/api/thread/comment/add",
+      { body: { thread_id, contents } }
+    );
+    return data!;
+  }
+
+  static async reactionAdd(comment_id: string, reaction: string) {
+    const { data } = await client.POST(
+      "/-/datasette-comments/api/reaction/add",
+      { body: { comment_id, reaction } }
+    );
+    return data!;
+  }
+
+  static async reactionRemove(comment_id: string, reaction: string) {
+    const { data } = await client.POST(
+      "/-/datasette-comments/api/reaction/remove",
+      { body: { comment_id, reaction } }
+    );
+    return data!;
+  }
+
+  static async reactions(comment_id: string): Promise<ReactionData[]> {
+    // This endpoint returns a bare array — not typed via OpenAPI output
+    const resp = await fetch(
+      `/-/datasette-comments/api/reactions/${encodeURIComponent(comment_id)}`,
+      { credentials: "include" }
+    );
+    return resp.json();
+  }
+
+  static async autocomplete_mentions(prefix: string) {
+    const { data } = await client.GET(
+      "/-/datasette-comments/api/autocomplete/mentions",
+      {
+        params: { query: { prefix } as any },
+      }
+    );
+    return data!;
+  }
+
+  static async activitySearch(params: ActivitySearchParams) {
     const searchParams = new URLSearchParams();
-    searchParams.set("searchComments", params.searchComments);
-    params.containsTags.forEach((tag) =>
-      searchParams.append("containsTag", tag)
-    );
+    if (params.searchComments)
+      searchParams.set("searchComments", params.searchComments);
+    if (params.containsTags)
+      params.containsTags.forEach((tag) =>
+        searchParams.append("containsTag", tag)
+      );
     searchParams.set("isResolved", params.isResolved ? "1" : "0");
     if (params.author) searchParams.set("author", params.author);
     if (params.database) searchParams.set("database", params.database);
     if (params.table) searchParams.set("table", params.table);
 
-    return api(`/-/datasette-comments/api/activity_search?${searchParams}`);
+    // activity_search uses query params, not request body
+    const resp = await fetch(
+      `/-/datasette-comments/api/activity_search?${searchParams}`,
+      { credentials: "include" }
+    );
+    return (await resp.json()) as { data: ActivitySearchResult[] };
   }
 }

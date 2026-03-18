@@ -1,7 +1,7 @@
 import "./activity_view.css";
 import { render } from "preact";
 import { DEFAULT_PROFILE_PICTURE } from "../../components/Thread";
-import { Api, ActivtySearchResult } from "../../lib/api";
+import { Api, ActivitySearchResult } from "../../lib/api";
 import { apiReducer, State, Action } from "../../lib/state";
 import { useReducer, useState } from "preact/hooks";
 import { batch, computed, signal, useSignalEffect } from "@preact/signals";
@@ -14,7 +14,7 @@ function targetPath({
   target_table,
   target_row_ids,
   target_columns,
-}: ActivtySearchResult) {
+}: ActivitySearchResult) {
   switch (target_type) {
     case "database":
       return target_database;
@@ -33,7 +33,7 @@ function targetPath({
   }
 }
 
-function ResultRow(props: { data: ActivtySearchResult; isLastRead: boolean }) {
+function ResultRow(props: { data: ActivitySearchResult; isLastRead: boolean }) {
   const { author, contents, created_at, created_duration_seconds } = props.data;
   const target = targetPath(props.data);
   return (
@@ -241,8 +241,8 @@ function ActivitySearch() {
 function ActivityView() {
   const [showFilters, setShowFilters] = useState<boolean>(hasInitialUrlParams);
   const [data, dispatch] = useReducer<
-    State<ActivtySearchResult[], string>,
-    Action<ActivtySearchResult[], string>
+    State<ActivitySearchResult[], string>,
+    Action<ActivitySearchResult[], string>
   >(apiReducer, { isLoading: true });
 
   useSignalEffect(() => {

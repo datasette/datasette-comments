@@ -20,6 +20,7 @@ from ..internal_db import (
 from ..page_data import (
     ThreadNewRequest,
     ThreadNewResponse,
+    ThreadCommentsResponse,
     CommentAddRequest,
     OkResponse,
     ThreadMarkResolvedRequest,
@@ -36,7 +37,7 @@ from .. import comment_parser
 
 @router.GET(
     r"^/-/datasette-comments/api/thread/comments/(?P<thread_id>.*)$",
-    output=None,
+    output=ThreadCommentsResponse,
 )
 @check_permission()
 async def thread_comments(thread_id: str, datasette=None, request=None):
