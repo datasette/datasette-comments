@@ -3,7 +3,7 @@ import os
 from datasette import hookimpl
 from datasette.permissions import Action
 from datasette.plugins import pm
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from . import hookspecs
 from .internal_migrations import internal_migrations
 from sqlite_utils import Database
@@ -139,7 +139,10 @@ def extra_css_urls(template, database, table, columns, view_name, request, datas
             return []
         chunk = _manifest.get(CONTENT_SCRIPT_ENTRYPOINT, {})
         return [
-            datasette.urls.static_plugins("datasette_comments", css)
+            datasette.urls.static_plugins(
+                "datasette_comments",
+                str(PurePosixPath(css).relative_to("static")),
+            )
             for css in chunk.get("css", [])
         ]
 
@@ -165,7 +168,8 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
             return [
                 {
                     "url": datasette.urls.static_plugins(
-                        "datasette_comments", file
+                        "datasette_comments",
+                        str(PurePosixPath(file).relative_to("static")),
                     ),
                     "module": True,
                 }
