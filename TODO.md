@@ -33,7 +33,7 @@
 - [x] 4.5 Combined types recipe
 
 ## Phase 5: Improved Tests
-- [ ] 5.1 Expand API test coverage
-- [ ] 5.2 Update test fixtures
-- [ ] 5.3 Verify content script injection
-- [ ] 5.4 Keep Playwright tests for E2E
+- [x] 5.1 Expand API test coverage (20+ tests covering all endpoints)
+- [x] 5.2 Update test fixtures (using make_datasette helper)
+- [x] 5.3 Verify content script injection (test_content_script_injection)
+- [ ] 5.4 Keep Playwright tests for E2E (existing, not modified)
