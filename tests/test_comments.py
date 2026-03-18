@@ -102,7 +102,7 @@ async def test_readonly_permissions():
                     "username": "asg017",
                     "author": {
                         "actor_id": "1",
-                        "name": None,
+                        "name": "1",
                         "profile_photo_url": None,
                         "username": "1",
                     },
@@ -115,7 +115,7 @@ async def test_readonly_permissions():
                 {
                     "author": {
                         "actor_id": "2",
-                        "name": None,
+                        "name": "2",
                         "profile_photo_url": None,
                         "username": "2",
                     },

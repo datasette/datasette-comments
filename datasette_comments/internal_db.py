@@ -51,7 +51,7 @@ async def author_from_profile(datasette, actor_id) -> Author:
     photo_url = f"/-/profile/pic/{actor_id}" if profile.has_photo else None
     return Author(
         actor_id=actor_id,
-        name=profile.display_name,
+        name=profile.display_name or actor_id,
         profile_photo_url=photo_url,
         username=actor_id,
     )
