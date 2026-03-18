@@ -1,9 +1,10 @@
-from typing import List, Optional
+from typing import List
 from ulid import ULID
 from . import comment_parser
 from .page_data import Author
 import json
-import hashlib
+
+from datasette_user_profiles.routes.pages import get_profile
 
 
 def insert_comment(thread_id: str, author_actor_id: str, contents: str):
@@ -44,40 +45,31 @@ def insert_comment(thread_id: str, author_actor_id: str, contents: str):
     return (SQL, params)
 
 
-def gravatar_url(email: str):
-    hash = hashlib.sha256(email.lower().encode()).hexdigest()
-    return f"https://www.gravatar.com/avatar/{hash}"
-
-
-def author_from_actor(datasette, actors, actor_id) -> Author:
-    enable_gravatar = (datasette.plugin_config("datasette-comments") or {}).get(
-        "enable_gravatar"
-    )
-    actor = actors.get(actor_id)
-
-    if actor is None:
-        return Author(actor_id=actor_id, name="", profile_photo_url=None, username=None)
-
-    name = actor.get("name")
-    profile_photo_url = actor.get("profile_picture_url")
-    if profile_photo_url is None and enable_gravatar and actor.get("email"):
-        profile_photo_url = gravatar_url(actor.get("email"))
-
+async def author_from_profile(datasette, actor_id) -> Author:
+    """Build an Author from datasette-user-profiles data."""
+    profile = await get_profile(datasette, actor_id)
+    photo_url = f"/-/profile/pic/{actor_id}" if profile.has_photo else None
     return Author(
         actor_id=actor_id,
-        name=name,
-        profile_photo_url=profile_photo_url,
-        username=actor.get("username"),
+        name=profile.display_name,
+        profile_photo_url=photo_url,
+        username=actor_id,
     )
 
 
-async def author_from_id(datasette, actor_id) -> Author:
-    actors = await datasette.actors_from_ids([actor_id])
-    return author_from_actor(datasette, actors, actor_id)
+async def authors_from_actor_ids(datasette, actor_ids) -> dict[str, Author]:
+    """Build Author objects for multiple actor IDs."""
+    result = {}
+    for actor_id in actor_ids:
+        result[actor_id] = await author_from_profile(datasette, actor_id)
+    return result
 
 
 async def author_from_request(datasette, request) -> Author:
-    return await author_from_id(datasette, (request.actor or {}).get("id"))
+    actor_id = (request.actor or {}).get("id")
+    if not actor_id:
+        return Author(actor_id="", name="", profile_photo_url=None, username=None)
+    return await author_from_profile(datasette, actor_id)
 
 
 # figured this would help with performance, to not hit label_column_for_table all the time?

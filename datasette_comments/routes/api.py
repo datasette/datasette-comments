@@ -11,9 +11,8 @@ from datasette_plugin_router import Body
 from ..router import router, check_permission
 from ..internal_db import (
     insert_comment,
-    author_from_actor,
-    author_from_id,
-    author_from_request,
+    author_from_profile,
+    authors_from_actor_ids,
     get_label_column,
     get_label_for_row,
 )
@@ -71,10 +70,10 @@ async def thread_comments(thread_id: str, datasette=None, request=None):
     for row in results:
         actor_ids.add(row["author_actor_id"])
         rows.append(dict(row))
-    actors = await datasette.actors_from_ids(list(actor_ids))
+    authors = await authors_from_actor_ids(datasette, actor_ids)
     for row in rows:
-        author = author_from_actor(datasette, actors, row["author_actor_id"])
-        row["author"] = author.model_dump()
+        author = authors.get(row["author_actor_id"])
+        row["author"] = author.model_dump() if author else {}
 
         results = comment_parser.parse(row["contents"])
         row["render_nodes"] = results.rendered
@@ -445,7 +444,7 @@ async def autocomplete_mentions(datasette=None, request=None):
         for user in await await_me_maybe(users):
             username = user.get("username")
             if username and username.startswith(prefix):
-                author = await author_from_id(datasette, user.get("id"))
+                author = await author_from_profile(datasette, user.get("id"))
                 suggestions.append(
                     {
                         "username": user.get("username"),
@@ -520,11 +519,11 @@ async def activity_search(datasette=None, request=None):
     data = [dict(row) for row in results.rows]
 
     actor_ids = set(row["author_actor_id"] for row in data)
-    actors = await datasette.actors_from_ids(actor_ids)
+    authors = await authors_from_actor_ids(datasette, actor_ids)
 
     for row in data:
-        row_author = author_from_actor(datasette, actors, row["author_actor_id"])
-        row["author"] = row_author.model_dump()
+        row_author = authors.get(row["author_actor_id"])
+        row["author"] = row_author.model_dump() if row_author else {}
 
         label_column = await get_label_column(
             datasette, row["target_database"], row["target_table"]

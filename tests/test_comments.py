@@ -104,7 +104,7 @@ async def test_readonly_permissions():
                         "actor_id": "1",
                         "name": None,
                         "profile_photo_url": None,
-                        "username": None,
+                        "username": "1",
                     },
                 }
             ],
@@ -117,7 +117,7 @@ async def test_readonly_permissions():
                         "actor_id": "2",
                         "name": None,
                         "profile_photo_url": None,
-                        "username": None,
+                        "username": "2",
                     },
                     "username": "simonw",
                 }
