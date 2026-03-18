@@ -46,9 +46,7 @@ async def test_permissions():
 
 @pytest.mark.asyncio
 async def test_readonly_permissions():
-    datasette = make_datasette(
-        **{"datasette-comments-readonly": {"id": ["readonly"]}}
-    )
+    datasette = make_datasette(**{"datasette-comments-readonly": {"id": ["readonly"]}})
 
     # datasette-comments-access users can create threads
     response = await datasette.client.post(

@@ -108,9 +108,7 @@ async def thread_new(
     elif type == "table":
         if any(item is None for item in (database, table)):
             return Response.json(
-                {
-                    "message": "target type table requires 'database' and 'table' fields"
-                },
+                {"message": "target type table requires 'database' and 'table' fields"},
                 status=400,
             )
     elif type == "row":

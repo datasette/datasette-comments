@@ -80,9 +80,7 @@ def menu_links(datasette, actor):
     async def inner():
         if await datasette.allowed(
             action=PERMISSION_ACCESS_NAME, actor=actor
-        ) or await datasette.allowed(
-            action=PERMISSION_READONLY_NAME, actor=actor
-        ):
+        ) or await datasette.allowed(action=PERMISSION_READONLY_NAME, actor=actor):
             return [
                 {
                     "href": datasette.urls.path("/-/datasette-comments/activity"),
@@ -115,9 +113,7 @@ async def should_inject_content_script(datasette, request, view_name):
         return False
     if await datasette.allowed(
         action=PERMISSION_ACCESS_NAME, actor=request.actor
-    ) or await datasette.allowed(
-        action=PERMISSION_READONLY_NAME, actor=request.actor
-    ):
+    ) or await datasette.allowed(action=PERMISSION_READONLY_NAME, actor=request.actor):
         return view_name in SUPPORTED_VIEWS
     return False
 
