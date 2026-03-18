@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { Thread } from "../components/Thread";
-import { Api, Author } from "../lib/api";
+import { Api } from "../lib/api";
+import type { Author } from "../lib/api";
 import { useState } from "preact/hooks";
 
 function RowViewComments(props: {

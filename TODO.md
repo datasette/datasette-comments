@@ -29,7 +29,7 @@
 - [x] 4.1 Create scripts/typegen-pagedata.py
 - [x] 4.2 Add Justfile recipe for page data types
 - [x] 4.3 Create frontend/src/lib/page_data.ts
-- [ ] 4.4 Update frontend entry points to use typed page data
+- [x] 4.4 Update frontend entry points to use typed page data
 - [x] 4.5 Combined types recipe
 
 ## Phase 5: Improved Tests

@@ -8,18 +8,13 @@
  * 1. Row View `/db/table/rowids`
  * 2. Table View `/db/table`
  */
-import { Author } from "../lib/api";
+import { loadPageData } from "../lib/page_data";
+import type { ContentScriptPageData } from "../page_data/ContentScriptPageData.types";
 import { attachRowView } from "./row_view";
 import { attachTableView } from "./table_view";
 
 function main() {
-  const CONFIG = (window as any).DATASETTE_COMMENTS_META as {
-    view_name: "index" | "database" | "table" | "row";
-    database?: string;
-    table?: string;
-    author: Author;
-    readonly_viewer: boolean;
-  };
+  const CONFIG = loadPageData<ContentScriptPageData>();
 
   switch (CONFIG.view_name) {
     case "index":

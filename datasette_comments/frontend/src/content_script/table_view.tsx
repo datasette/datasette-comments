@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { Api, Author, CommentTargetType } from "../lib/api";
+import { Api } from "../lib/api";
+import type { Author, CommentTargetType } from "../lib/api";
 import { Thread } from "../components/Thread";
 import { ICONS } from "../lib/icons";
 let THREAD_ROOT: HTMLElement;
