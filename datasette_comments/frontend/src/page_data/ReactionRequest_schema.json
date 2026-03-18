@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "comment_id": {
+      "title": "Comment Id",
+      "type": "string"
+    },
+    "reaction": {
+      "title": "Reaction",
+      "type": "string"
+    }
+  },
+  "required": [
+    "comment_id",
+    "reaction"
+  ],
+  "title": "ReactionRequest",
+  "type": "object"
+}

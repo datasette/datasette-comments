@@ -20,17 +20,17 @@
 - [x] 2.7 Remove root-level package.json, tsconfig.json, old esbuild output
 
 ## Phase 3: Type Safety — API Pipeline
-- [ ] 3.1 Add OpenAPI spec generation
-- [ ] 3.2 Create typed openapi-fetch client
+- [x] 3.1 Add OpenAPI spec generation
+- [x] 3.2 Create typed openapi-fetch client
 - [ ] 3.3 Replace hand-written Api class
 - [ ] 3.4 Delete old lib/api.ts
 
 ## Phase 4: Type Safety — Page Data Pipeline
-- [ ] 4.1 Create scripts/typegen-pagedata.py
-- [ ] 4.2 Add Justfile recipe for page data types
-- [ ] 4.3 Create frontend/src/lib/page_data.ts
+- [x] 4.1 Create scripts/typegen-pagedata.py
+- [x] 4.2 Add Justfile recipe for page data types
+- [x] 4.3 Create frontend/src/lib/page_data.ts
 - [ ] 4.4 Update frontend entry points to use typed page data
-- [ ] 4.5 Combined types recipe
+- [x] 4.5 Combined types recipe
 
 ## Phase 5: Improved Tests
 - [ ] 5.1 Expand API test coverage

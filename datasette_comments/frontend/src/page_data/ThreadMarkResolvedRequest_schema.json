@@ -1,0 +1,13 @@
+{
+  "properties": {
+    "thread_id": {
+      "title": "Thread Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "thread_id"
+  ],
+  "title": "ThreadMarkResolvedRequest",
+  "type": "object"
+}
