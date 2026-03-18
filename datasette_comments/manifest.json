@@ -1,0 +1,34 @@
+{
+  "_Thread-Csvdgydl.js": {
+    "file": "static/gen/Thread-Csvdgydl.js",
+    "name": "Thread",
+    "css": [
+      "static/gen/Thread-D__iTDGk.css"
+    ]
+  },
+  "_Thread-D__iTDGk.css": {
+    "file": "static/gen/Thread-D__iTDGk.css",
+    "src": "_Thread-D__iTDGk.css"
+  },
+  "src/content_script/index.tsx": {
+    "file": "static/gen/content_script-CjmGoik4.js",
+    "name": "content_script",
+    "src": "src/content_script/index.tsx",
+    "isEntry": true,
+    "imports": [
+      "_Thread-Csvdgydl.js"
+    ]
+  },
+  "src/pages/activity/index.tsx": {
+    "file": "static/gen/activity-D46XIZ-7.js",
+    "name": "activity",
+    "src": "src/pages/activity/index.tsx",
+    "isEntry": true,
+    "imports": [
+      "_Thread-Csvdgydl.js"
+    ],
+    "css": [
+      "static/gen/activity-LwDnNWO4.css"
+    ]
+  }
+}

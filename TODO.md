@@ -11,12 +11,12 @@
 - [x] 1.8 Tests pass
 
 ## Phase 2: Vite Build System
-- [ ] 2.1 Restructure frontend/ directory
-- [ ] 2.2 Create vite.config.ts
-- [ ] 2.3 Create frontend/package.json
-- [ ] 2.4 Update activity_view.html template
-- [ ] 2.5 Update content script injection hooks
-- [ ] 2.6 Update Justfile
+- [x] 2.1 Restructure frontend/ directory
+- [x] 2.2 Create vite.config.ts
+- [x] 2.3 Create frontend/package.json
+- [x] 2.4 Update activity_view.html template
+- [x] 2.5 Update content script injection hooks
+- [x] 2.6 Update Justfile
 - [ ] 2.7 Remove root-level package.json, tsconfig.json
 
 ## Phase 3: Type Safety — API Pipeline

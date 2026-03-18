@@ -474,3 +474,20 @@ async def test_content_script_injection():
     response = await datasette.client.get("/", cookies=cookies)
     assert response.status_code == 200
     assert "DATASETTE_COMMENTS_META" in response.text
+    # Should include the vite-built content script JS
+    assert "content_script" in response.text
+
+
+@pytest.mark.asyncio
+async def test_activity_page_vite_entry():
+    """Test that the activity page uses vite_entry for its JS/CSS."""
+    datasette = make_datasette()
+    cookies = cookie_for_actor(datasette, "alex")
+
+    response = await datasette.client.get(
+        "/-/datasette-comments/activity",
+        cookies=cookies,
+    )
+    assert response.status_code == 200
+    # Should include vite-built activity JS
+    assert "activity" in response.text

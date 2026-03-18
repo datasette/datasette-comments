@@ -1,3 +1,5 @@
+import os
+
 from datasette import hookimpl
 from datasette.permissions import Action
 from datasette.plugins import pm
@@ -7,17 +9,38 @@ from .internal_migrations import internal_migrations
 from sqlite_utils import Database
 import json
 
+from datasette_vite import vite_entry
+
 from .router import PERMISSION_ACCESS_NAME, PERMISSION_READONLY_NAME
 from .internal_db import author_from_request
 
 # Ensure route decorators fire
-from .routes import api  # noqa: F401
-from .routes import pages  # noqa: F401
+from .routes import api, pages  # noqa: F401
 from .router import router
+
+_ = (api, pages)
 
 pm.add_hookspecs(hookspecs)
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
+
+VITE_DEV_PATH = os.environ.get("DATASETTE_COMMENTS_VITE_DEV")
+
+# Load Vite manifest once at import time (production only)
+_manifest = {}
+_manifest_path = Path(__file__).parent / "manifest.json"
+if _manifest_path.exists():
+    _manifest = json.loads(_manifest_path.read_text())
+
+
+@hookimpl
+def extra_template_vars(datasette):
+    entry = vite_entry(
+        datasette=datasette,
+        plugin_package="datasette_comments",
+        vite_dev_path=VITE_DEV_PATH,
+    )
+    return {"datasette_comments_vite_entry": entry}
 
 
 @hookimpl
@@ -104,28 +127,48 @@ async def extra_body_script(
     return ""
 
 
-@hookimpl
-def extra_js_urls(template, database, table, columns, view_name, request, datasette):
-    async def inner():
-        if await should_inject_content_script(datasette, request, view_name):
-            return [
-                datasette.urls.path(
-                    "/-/static-plugins/datasette-comments/content_script/index.min.js"
-                )
-            ]
-        return []
-
-    return inner
+CONTENT_SCRIPT_ENTRYPOINT = "src/content_script/index.tsx"
 
 
 @hookimpl
 def extra_css_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
-        if await should_inject_content_script(datasette, request, view_name):
+        if not await should_inject_content_script(datasette, request, view_name):
+            return []
+        if VITE_DEV_PATH:
+            return []
+        chunk = _manifest.get(CONTENT_SCRIPT_ENTRYPOINT, {})
+        return [
+            datasette.urls.static_plugins("datasette_comments", css)
+            for css in chunk.get("css", [])
+        ]
+
+    return inner
+
+
+@hookimpl
+def extra_js_urls(template, database, table, columns, view_name, request, datasette):
+    async def inner():
+        if not await should_inject_content_script(datasette, request, view_name):
+            return []
+        if VITE_DEV_PATH:
             return [
-                datasette.urls.path(
-                    "/-/static-plugins/datasette-comments/content_script/index.min.css"
-                )
+                {"url": f"{VITE_DEV_PATH}@vite/client", "module": True},
+                {
+                    "url": f"{VITE_DEV_PATH}{CONTENT_SCRIPT_ENTRYPOINT}",
+                    "module": True,
+                },
+            ]
+        chunk = _manifest.get(CONTENT_SCRIPT_ENTRYPOINT, {})
+        file = chunk.get("file", "")
+        if file:
+            return [
+                {
+                    "url": datasette.urls.static_plugins(
+                        "datasette_comments", file
+                    ),
+                    "module": True,
+                }
             ]
         return []
 

@@ -4,11 +4,7 @@
 {% block title %}Comments{% endblock %}
 
 {% block extra_head %}
-<script src="{{ urls.static_plugins("datasette_comments", "activity_view/index.min.js") }}"></script>
-<link href="{{ urls.static_plugins("datasette_comments", "activity_view/index.min.css") }}" rel="stylesheet" />
-<style>
-
-</style>
+{{ datasette_comments_vite_entry("src/pages/activity/index.tsx") | safe }}
 {% endblock %}
 
 {% block content %}
