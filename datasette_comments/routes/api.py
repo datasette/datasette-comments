@@ -475,12 +475,8 @@ async def activity_search(datasette=None, request=None):
         params.append(search_comments)
 
     if author:
-        for users in pm.hook.datasette_comments_users(datasette=datasette):
-            for user in await await_me_maybe(users):
-                if user.get("username") == author:
-                    WHERE += " AND comments.author_actor_id = ?"
-                    params.append(user.get("id"))
-                    break
+        WHERE += " AND comments.author_actor_id = ?"
+        params.append(author)
 
     if database:
         WHERE += " AND threads.target_database = ?"
