@@ -25,9 +25,11 @@ dev *flags:
   DATASETTE_SECRET=abc123 \
     uv run \
       --with datasette-debug-gotham \
+      --with datasette-sidebar \
       datasette \
       --plugins-dir examples \
       -s permissions.datasette-comments-access.id '*' \
+      -s permissions.datasette-sidebar-access.id '*' \
       -s permissions.profile_access.id '*' \
       --internal internal.db \
       legislators.db fixtures.db internal.db big.db \
