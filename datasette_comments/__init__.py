@@ -130,6 +130,25 @@ async def extra_body_script(
 CONTENT_SCRIPT_ENTRYPOINT = "src/content_script/index.tsx"
 
 
+def _collect_css_from_manifest(entrypoint):
+    """Recursively collect all CSS files from a manifest entry and its imports."""
+    css_files = []
+    seen = set()
+
+    def collect(key):
+        if key in seen:
+            return
+        seen.add(key)
+        chunk = _manifest.get(key, {})
+        for css in chunk.get("css", []):
+            css_files.append(css)
+        for imp in chunk.get("imports", []):
+            collect(imp)
+
+    collect(entrypoint)
+    return css_files
+
+
 @hookimpl
 def extra_css_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
@@ -137,13 +156,12 @@ def extra_css_urls(template, database, table, columns, view_name, request, datas
             return []
         if VITE_DEV_PATH:
             return []
-        chunk = _manifest.get(CONTENT_SCRIPT_ENTRYPOINT, {})
         return [
             datasette.urls.static_plugins(
                 "datasette_comments",
                 str(PurePosixPath(css).relative_to("static")),
             )
-            for css in chunk.get("css", [])
+            for css in _collect_css_from_manifest(CONTENT_SCRIPT_ENTRYPOINT)
         ]
 
     return inner
