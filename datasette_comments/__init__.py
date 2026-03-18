@@ -3,13 +3,13 @@ import os
 from datasette import hookimpl
 from datasette.permissions import Action
 from datasette.plugins import pm
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from . import hookspecs
 from .internal_migrations import internal_migrations
 from sqlite_utils import Database
 import json
 
-from datasette_vite import vite_entry
+from datasette_vite import vite_entry, vite_js_urls, vite_css_urls
 
 from .router import PERMISSION_ACCESS_NAME, PERMISSION_READONLY_NAME
 from .internal_db import author_from_request
@@ -25,12 +25,6 @@ pm.add_hookspecs(hookspecs)
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 
 VITE_DEV_PATH = os.environ.get("DATASETTE_COMMENTS_VITE_DEV")
-
-# Load Vite manifest once at import time (production only)
-_manifest = {}
-_manifest_path = Path(__file__).parent / "manifest.json"
-if _manifest_path.exists():
-    _manifest = json.loads(_manifest_path.read_text())
 
 
 @hookimpl
@@ -130,39 +124,17 @@ async def extra_body_script(
 CONTENT_SCRIPT_ENTRYPOINT = "src/content_script/index.tsx"
 
 
-def _collect_css_from_manifest(entrypoint):
-    """Recursively collect all CSS files from a manifest entry and its imports."""
-    css_files = []
-    seen = set()
-
-    def collect(key):
-        if key in seen:
-            return
-        seen.add(key)
-        chunk = _manifest.get(key, {})
-        for css in chunk.get("css", []):
-            css_files.append(css)
-        for imp in chunk.get("imports", []):
-            collect(imp)
-
-    collect(entrypoint)
-    return css_files
-
-
 @hookimpl
 def extra_css_urls(template, database, table, columns, view_name, request, datasette):
     async def inner():
         if not await should_inject_content_script(datasette, request, view_name):
             return []
-        if VITE_DEV_PATH:
-            return []
-        return [
-            datasette.urls.static_plugins(
-                "datasette_comments",
-                str(PurePosixPath(css).relative_to("static")),
-            )
-            for css in _collect_css_from_manifest(CONTENT_SCRIPT_ENTRYPOINT)
-        ]
+        return vite_css_urls(
+            datasette=datasette,
+            entrypoint=CONTENT_SCRIPT_ENTRYPOINT,
+            plugin_package="datasette_comments",
+            vite_dev_path=VITE_DEV_PATH,
+        )
 
     return inner
 
@@ -172,26 +144,11 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
     async def inner():
         if not await should_inject_content_script(datasette, request, view_name):
             return []
-        if VITE_DEV_PATH:
-            return [
-                {"url": f"{VITE_DEV_PATH}@vite/client", "module": True},
-                {
-                    "url": f"{VITE_DEV_PATH}{CONTENT_SCRIPT_ENTRYPOINT}",
-                    "module": True,
-                },
-            ]
-        chunk = _manifest.get(CONTENT_SCRIPT_ENTRYPOINT, {})
-        file = chunk.get("file", "")
-        if file:
-            return [
-                {
-                    "url": datasette.urls.static_plugins(
-                        "datasette_comments",
-                        str(PurePosixPath(file).relative_to("static")),
-                    ),
-                    "module": True,
-                }
-            ]
-        return []
+        return vite_js_urls(
+            datasette=datasette,
+            entrypoint=CONTENT_SCRIPT_ENTRYPOINT,
+            plugin_package="datasette_comments",
+            vite_dev_path=VITE_DEV_PATH,
+        )
 
     return inner

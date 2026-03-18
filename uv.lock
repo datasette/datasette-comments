@@ -203,10 +203,11 @@ wheels = [
 [[package]]
 name = "datasette-comments"
 version = "0.1.1a3"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "datasette" },
     { name = "datasette-plugin-router" },
+    { name = "datasette-user-profiles" },
     { name = "datasette-vite" },
     { name = "pydantic" },
     { name = "python-ulid" },
@@ -225,7 +226,8 @@ dev = [
 requires-dist = [
     { name = "datasette", specifier = ">=1.0a21" },
     { name = "datasette-plugin-router", specifier = ">=0.0.1a2" },
-    { name = "datasette-vite", specifier = ">=0.0.1a2" },
+    { name = "datasette-user-profiles", specifier = ">=0.0.1a1" },
+    { name = "datasette-vite", specifier = ">=0.0.1a3" },
     { name = "pydantic", specifier = ">=2" },
     { name = "python-ulid" },
     { name = "sqlite-migrate", specifier = "==0.1b0" },
@@ -254,16 +256,33 @@ wheels = [
 ]
 
 [[package]]
+name = "datasette-user-profiles"
+version = "0.1.0a2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "datasette" },
+    { name = "datasette-plugin-router" },
+    { name = "datasette-vite" },
+    { name = "pydantic" },
+    { name = "sqlite-migrate" },
+    { name = "sqlite-utils" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c4/f7/8ac5c5132bd26d3ac10bb7e93517fc26ce4c471db3fddbbbf89318ff808a/datasette_user_profiles-0.1.0a2.tar.gz", hash = "sha256:f38f063cf51287bc313ae30b923e807b2042095c12cfb635ce5f0203f379a641", size = 32689, upload-time = "2026-03-18T05:52:35.521Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/1f/a965c3821f3ba0a58420dc0675ebea5b4f38ed04f69499b1d9d17c348f3d/datasette_user_profiles-0.1.0a2-py3-none-any.whl", hash = "sha256:970103441e20ba794741707bc6f03266dfa46afaa0c21b70b63bcfffcb1d73f2", size = 37355, upload-time = "2026-03-18T05:52:34.245Z" },
+]
+
+[[package]]
 name = "datasette-vite"
-version = "0.0.1a2"
+version = "0.0.1a3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasette" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/b6/3d672c02f037895470ebd9a0a45ec0b65eee044a50d5327a7b3765fa0d6a/datasette_vite-0.0.1a2.tar.gz", hash = "sha256:3dc315a71e13e01f09eefe550c183f84d18458c4bdc9404debb38ffee794daba", size = 9631, upload-time = "2026-03-17T19:48:55.164Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/b0/7da0a877227ac26933291a258bab9e93fe63ae798d19c30d36fc0125e52a/datasette_vite-0.0.1a3.tar.gz", hash = "sha256:bdf8c2624dbb7d02ea0e3186229d6593607c5548d6c3b509d0c3f3460a47dcc9", size = 10473, upload-time = "2026-03-18T22:35:32.59Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/43/b43e00f6c67df7450952fa05e58e86eb27fa971336c4fb47a73106db65ad/datasette_vite-0.0.1a2-py3-none-any.whl", hash = "sha256:0e57ac96798cf83b753f0010345f1f89def46fc29d746ebda5d8424351f6a561", size = 8238, upload-time = "2026-03-17T19:48:54.211Z" },
+    { url = "https://files.pythonhosted.org/packages/51/2b/1ccf32c027ccd70b68355d8b10455ac0e70135bd565a7fc4c10dc37096a5/datasette_vite-0.0.1a3-py3-none-any.whl", hash = "sha256:be21855d48627b482caed3c5c4b51a3a21f5f3da42ef64f12f441492201c05ba", size = 8874, upload-time = "2026-03-18T22:35:31.494Z" },
 ]
 
 [[package]]
