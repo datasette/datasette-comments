@@ -8,6 +8,16 @@ import { batch, computed, signal, useSignalEffect } from "@preact/signals";
 import { Duration } from "../../components/Duration";
 import { ICONS } from "../../lib/icons";
 
+function parseRowIds(target_row_ids: string | null): string {
+  if (!target_row_ids) return "";
+  try {
+    const parsed = JSON.parse(target_row_ids);
+    return Array.isArray(parsed) ? parsed.join(",") : String(parsed);
+  } catch {
+    return target_row_ids;
+  }
+}
+
 function targetPath({
   target_type,
   target_database,
@@ -23,13 +33,9 @@ function targetPath({
     case "columns":
       return `${target_database}/${target_columns}`;
     case "row":
-      return `${target_database}/${target_table}/${JSON.parse(
-        target_row_ids!
-      ).join(",")}`;
+      return `${target_database}/${target_table}/${parseRowIds(target_row_ids)}`;
     case "value":
-      return `${target_database}/${target_table}/${target_columns}/${JSON.parse(
-        target_row_ids!
-      ).join(",")}`;
+      return `${target_database}/${target_table}/${target_columns}/${parseRowIds(target_row_ids)}`;
   }
 }
 
