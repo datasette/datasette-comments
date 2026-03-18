@@ -195,8 +195,8 @@ export async function attachTableView(
     }
 
     button.innerHTML = thread_id ? ICONS.COMMENT : ICONS.COMMENT_ADD;
-    (button.querySelector("svg") as any).width = 16;
-    (button.querySelector("svg") as any).height = 16;
+    button.querySelector("svg")!.setAttribute("width", "16");
+    button.querySelector("svg")!.setAttribute("height", "16");
 
     button.addEventListener("click", () => {
       render(null, THREAD_ROOT);
