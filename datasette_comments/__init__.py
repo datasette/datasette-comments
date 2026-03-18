@@ -10,7 +10,13 @@ from sqlite_utils import Database
 import json
 
 from datasette_vite import vite_entry, vite_js_urls, vite_css_urls
-from datasette_sidebar.hookspecs import SidebarApp
+
+try:
+    from datasette_sidebar.hookspecs import SidebarApp
+
+    _has_sidebar = True
+except ImportError:
+    _has_sidebar = False
 
 from .router import PERMISSION_ACCESS_NAME, PERMISSION_READONLY_NAME
 from .internal_db import author_from_request
@@ -54,17 +60,19 @@ def register_actions(datasette):
     ]
 
 
-@hookimpl
-def datasette_sidebar_apps(datasette):
-    return [
-        SidebarApp(
-            label="Comments",
-            description="Comment threads and activity",
-            href="/-/datasette-comments/activity",
-            icon='<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240L80-80Zm126-240h594v-480H160v525l46-45Zm-46 0v-480 480Z"/></svg>',
-            color="#276890",
-        ),
-    ]
+if _has_sidebar:
+
+    @hookimpl
+    def datasette_sidebar_apps(datasette):
+        return [
+            SidebarApp(
+                label="Comments",
+                description="Comment threads and activity",
+                href="/-/datasette-comments/activity",
+                icon='<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240L80-80Zm126-240h594v-480H160v525l46-45Zm-46 0v-480 480Z"/></svg>',
+                color="#276890",
+            ),
+        ]
 
 
 @hookimpl
