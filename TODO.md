@@ -17,7 +17,7 @@
 - [x] 2.4 Update activity_view.html template
 - [x] 2.5 Update content script injection hooks
 - [x] 2.6 Update Justfile
-- [ ] 2.7 Remove root-level package.json, tsconfig.json
+- [x] 2.7 Remove root-level package.json, tsconfig.json, old esbuild output
 
 ## Phase 3: Type Safety — API Pipeline
 - [ ] 3.1 Add OpenAPI spec generation
