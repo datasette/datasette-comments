@@ -149,6 +149,31 @@ class ActivitySearchResponse(BaseModel):
     data: List[ActivitySearchResult]
 
 
+class ProfileActivityItem(BaseModel):
+    type: str  # "comment" or "reaction"
+    created_at: str
+    created_duration_seconds: int
+    target_type: str
+    target_database: Optional[str] = None
+    target_table: Optional[str] = None
+    target_row_ids: Optional[str] = None
+    target_column: Optional[str] = None
+    target_label: Optional[str] = None
+    # comment fields
+    author_actor_id: Optional[str] = None
+    author: Optional[Author] = None
+    contents: Optional[str] = None
+    # reaction fields
+    reaction: Optional[str] = None
+    comment_author_actor_id: Optional[str] = None
+    comment_author: Optional[Author] = None
+    comment_contents: Optional[str] = None
+
+
+class ProfileActivityResponse(BaseModel):
+    data: List[ProfileActivityItem]
+
+
 __exports__ = [
     Author,
     ContentScriptPageData,

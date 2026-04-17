@@ -30,6 +30,7 @@ from ..page_data import (
     ReactionRequest,
     AutocompleteMentionsResponse,
     ActivitySearchResponse,
+    ProfileActivityResponse,
 )
 from .. import comment_parser
 
@@ -460,6 +461,7 @@ async def autocomplete_mentions(datasette=None, request=None):
 async def activity_search(datasette=None, request=None):
     search_comments = request.args.get("searchComments")
     author = request.args.get("author")
+    author_actor_id = request.args.get("authorActorId")
     database = request.args.get("database")
     table = request.args.get("table")
     is_resolved = request.args.get("isResolved") == "1"
@@ -472,7 +474,10 @@ async def activity_search(datasette=None, request=None):
         WHERE += " AND comments.contents LIKE printf('%%%s%%', ?)"
         params.append(search_comments)
 
-    if author:
+    if author_actor_id:
+        WHERE += " AND comments.author_actor_id = ?"
+        params.append(author_actor_id)
+    elif author:
         for users in pm.hook.datasette_comments_users(datasette=datasette):
             for user in await await_me_maybe(users):
                 if user.get("username") == author:
@@ -540,6 +545,109 @@ async def activity_search(datasette=None, request=None):
                 rowids,
             )
             row["target_label"] = target_label
+        else:
+            row["target_label"] = None
+
+    return Response.json({"data": data})
+
+
+@router.GET(
+    r"^/-/datasette-comments/api/profile_activity$",
+    output=ProfileActivityResponse,
+)
+@check_permission()
+async def profile_activity(datasette=None, request=None):
+    actor_id = request.args.get("actorId")
+    if not actor_id:
+        return Response.json({"data": []})
+
+    db = datasette.get_internal_database()
+
+    comments_results = await db.execute(
+        """
+        SELECT
+          'comment' as type,
+          comments.author_actor_id,
+          comments.contents,
+          comments.created_at,
+          (strftime('%s', 'now') - strftime('%s', comments.created_at)) as created_duration_seconds,
+          threads.target_type,
+          threads.target_database,
+          threads.target_table,
+          threads.target_row_ids,
+          threads.target_column
+        FROM datasette_comments_comments AS comments
+        LEFT JOIN datasette_comments_threads AS threads ON threads.id = comments.thread_id
+        WHERE comments.author_actor_id = :actor_id
+        ORDER BY comments.created_at DESC
+        LIMIT 100
+        """,
+        {"actor_id": actor_id},
+    )
+
+    reactions_results = await db.execute(
+        """
+        SELECT
+          'reaction' as type,
+          reactions.reaction,
+          comments.author_actor_id as comment_author_actor_id,
+          comments.contents as comment_contents,
+          comments.created_at,
+          (strftime('%s', 'now') - strftime('%s', comments.created_at)) as created_duration_seconds,
+          threads.target_type,
+          threads.target_database,
+          threads.target_table,
+          threads.target_row_ids,
+          threads.target_column
+        FROM datasette_comments_reactions AS reactions
+        JOIN datasette_comments_comments AS comments ON comments.id = reactions.comment_id
+        JOIN datasette_comments_threads AS threads ON threads.id = comments.thread_id
+        WHERE reactions.reactor_actor_id = :actor_id
+        ORDER BY comments.created_at DESC
+        LIMIT 100
+        """,
+        {"actor_id": actor_id},
+    )
+
+    data = [dict(row) for row in comments_results.rows] + [
+        dict(row) for row in reactions_results.rows
+    ]
+    data.sort(key=lambda r: r["created_at"], reverse=True)
+    data = data[:100]
+
+    actor_ids = set()
+    for row in data:
+        if row.get("author_actor_id"):
+            actor_ids.add(row["author_actor_id"])
+        if row.get("comment_author_actor_id"):
+            actor_ids.add(row["comment_author_actor_id"])
+    authors = await authors_from_actor_ids(datasette, actor_ids)
+
+    for row in data:
+        if row["type"] == "comment":
+            row_author = authors.get(row["author_actor_id"])
+            row["author"] = row_author.model_dump() if row_author else {}
+        elif row["type"] == "reaction":
+            comment_author = authors.get(row["comment_author_actor_id"])
+            row["comment_author"] = (
+                comment_author.model_dump() if comment_author else {}
+            )
+
+        label_column = await get_label_column(
+            datasette, row["target_database"], row["target_table"]
+        )
+        if label_column:
+            try:
+                rowids = json.loads(row["target_row_ids"])
+            except Exception:
+                row["target_label"] = None
+                continue
+            row["target_label"] = await get_label_for_row(
+                datasette.databases[row["target_database"]],
+                row["target_table"],
+                label_column,
+                rowids,
+            )
         else:
             row["target_label"] = None
 

@@ -18,6 +18,13 @@ try:
 except ImportError:
     _has_sidebar = False
 
+try:
+    from datasette_user_profiles.hookspecs import ProfileSection
+
+    _has_user_profiles = True
+except ImportError:
+    _has_user_profiles = False
+
 from .router import PERMISSION_ACCESS_NAME, PERMISSION_READONLY_NAME
 from .internal_db import author_from_request
 
@@ -71,6 +78,40 @@ if _has_sidebar:
                 href="/-/datasette-comments/activity",
                 icon='<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240L80-80Zm126-240h594v-480H160v525l46-45Zm-46 0v-480 480Z"/></svg>',
                 color="#276890",
+            ),
+        ]
+
+
+PROFILE_SECTION_ENTRYPOINT = "src/pages/profile_section/index.tsx"
+
+if _has_user_profiles:
+
+    @hookimpl
+    def datasette_user_profile_sections(datasette):
+        js_urls = [
+            u["url"]
+            for u in vite_js_urls(
+                datasette,
+                entrypoint=PROFILE_SECTION_ENTRYPOINT,
+                plugin_package="datasette_comments",
+                vite_dev_path=VITE_DEV_PATH,
+            )
+        ]
+        css_urls = vite_css_urls(
+            datasette,
+            entrypoint=PROFILE_SECTION_ENTRYPOINT,
+            plugin_package="datasette_comments",
+            vite_dev_path=VITE_DEV_PATH,
+        )
+        return [
+            ProfileSection(
+                id="comments",
+                label="Recent Comments",
+                tag_name="profile-comments",
+                js_urls=js_urls,
+                css_urls=css_urls,
+                sort_order=50,
+                icon='<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240L80-80Zm126-240h594v-480H160v525l46-45Zm-46 0v-480 480Z"/></svg>',
             ),
         ]
 

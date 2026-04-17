@@ -21,6 +21,7 @@ export default defineConfig({
       input: {
         activity: "src/pages/activity/index.tsx",
         content_script: "src/content_script/index.tsx",
+        profile_section: "src/pages/profile_section/index.tsx",
       },
     },
   },

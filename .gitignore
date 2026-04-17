@@ -15,3 +15,5 @@ build
 *.db
 venv/
 node_modules/
+
+datasette_comments/static/gen/*
