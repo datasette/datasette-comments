@@ -10,7 +10,7 @@ venv
 .vscode
 dist
 build
-
+uv.lock
 
 *.db
 venv/
