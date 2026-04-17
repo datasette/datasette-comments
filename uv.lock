@@ -202,7 +202,7 @@ wheels = [
 
 [[package]]
 name = "datasette-comments"
-version = "0.1.2a1"
+version = "0.1.2a3"
 source = { editable = "." }
 dependencies = [
     { name = "datasette" },
@@ -226,7 +226,7 @@ dev = [
 requires-dist = [
     { name = "datasette", specifier = ">=1.0a21" },
     { name = "datasette-plugin-router", specifier = ">=0.0.1a2" },
-    { name = "datasette-user-profiles", specifier = ">=0.1.0a2" },
+    { name = "datasette-user-profiles", specifier = ">=0.1.0a3" },
     { name = "datasette-vite", specifier = ">=0.0.1a3" },
     { name = "pydantic", specifier = ">=2" },
     { name = "python-ulid" },
@@ -257,7 +257,7 @@ wheels = [
 
 [[package]]
 name = "datasette-user-profiles"
-version = "0.1.0a2"
+version = "0.1.0a3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasette" },
@@ -267,9 +267,9 @@ dependencies = [
     { name = "sqlite-migrate" },
     { name = "sqlite-utils" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c4/f7/8ac5c5132bd26d3ac10bb7e93517fc26ce4c471db3fddbbbf89318ff808a/datasette_user_profiles-0.1.0a2.tar.gz", hash = "sha256:f38f063cf51287bc313ae30b923e807b2042095c12cfb635ce5f0203f379a641", size = 32689, upload-time = "2026-03-18T05:52:35.521Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d6/6e/4181673d84ee39a501021bcaefa83fa6bbb1f0f27c0b4cc70a0b0e2bbca4/datasette_user_profiles-0.1.0a3.tar.gz", hash = "sha256:1b2407cd57213a96b2b757f495c6ab90ac7764b00ecd37a7a3a963a1027e1b80", size = 45928, upload-time = "2026-04-17T00:49:50.163Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/1f/a965c3821f3ba0a58420dc0675ebea5b4f38ed04f69499b1d9d17c348f3d/datasette_user_profiles-0.1.0a2-py3-none-any.whl", hash = "sha256:970103441e20ba794741707bc6f03266dfa46afaa0c21b70b63bcfffcb1d73f2", size = 37355, upload-time = "2026-03-18T05:52:34.245Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/dd/0e957d9e7fb22a0c2d2e0fae180b9f45d537f8362d3a7959accae1ea15c7/datasette_user_profiles-0.1.0a3-py3-none-any.whl", hash = "sha256:eea8bdf873d51b346558cbfc3b73c991e1653441287f511bd2c6ef646920df72", size = 55440, upload-time = "2026-04-17T00:49:48.654Z" },
 ]
 
 [[package]]
