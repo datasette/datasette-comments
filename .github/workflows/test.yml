@@ -10,24 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version:  ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v5
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: pyproject.toml
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright/
-          key: ${{ runner.os }}-browsers
-      - name: Install dependencies
-        run: |
-          pip install '.[test]'
-      - run: playwright install
-      - name: Run tests
-        run: |
-          pytest
+    - uses: actions/checkout@v5
+    - uses: astral-sh/setup-uv@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+    - uses: actions/setup-node@v6
+    - uses: extractions/setup-just@v3
+    - name: Cache Playwright browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright/
+        key: ${{ runner.os }}-playwright
+    - run: npm install --prefix datasette_comments/frontend
+    - run: just frontend
+    - run: uv run playwright install
+    - run: uv run pytest
