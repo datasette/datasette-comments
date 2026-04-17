@@ -1,25 +1,52 @@
-flags := ""
+# Type generation
+types-routes:
+  uv run python -c 'from datasette_comments.router import router; import json;print(json.dumps(router.openapi_document_json()))' \
+    | npx --prefix datasette_comments/frontend openapi-typescript > datasette_comments/frontend/src/generated/api.d.ts
 
-js:
-  ./node_modules/.bin/esbuild \
-    --bundle --minify --format=esm  --jsx-factory=h --jsx-fragment=Fragment {{flags}} \
-    --out-extension:.js=.min.js \
-    --out-extension:.css=.min.css \
-    datasette_comments/frontend/targets/**/index.tsx \
-    --target=safari12 \
-    --outdir=datasette_comments/static
+types-pagedata:
+  uv run python -c "exec(open('scripts/typegen-pagedata.py').read())"
+  for f in datasette_comments/frontend/src/page_data/*_schema.json; do \
+    npx --prefix datasette_comments/frontend json2ts "$f" > "${f%_schema.json}.types.ts"; \
+  done
 
-dev:
-  DATASETTE_SECRET=abc123 watchexec --signal SIGKILL --restart --clear -e py,ts,js,html,css,sql -- \
-    python3 -m datasette \
-      --root \
-      --plugins-dir=tests/basic_plugin/ \
-      --metadata tests/basic_plugin/metadata.yaml \
+types:
+  just types-routes
+  just types-pagedata
+
+# Frontend building
+frontend:
+  cd datasette_comments/frontend && npx vite build
+
+frontend-dev:
+  cd datasette_comments/frontend && npx vite --port 5179
+
+# Development servers
+dev *flags:
+  DATASETTE_SECRET=abc123 \
+    uv run \
+      --with datasette-debug-gotham \
+      --with datasette-sidebar \
+      datasette \
+      --plugins-dir examples \
+      -s permissions.datasette-comments-access.id '*' \
+      -s permissions.datasette-sidebar-access.id '*' \
+      -s permissions.profile_access.id '*' \
       --internal internal.db \
-      legislators.db fixtures.db internal.db big.db
+      legislators.db fixtures.db internal.db big.db \
+      {{flags}}
 
-test:
-  pytest
+dev-with-hmr *flags:
+  DATASETTE_COMMENTS_VITE_DEV=http://localhost:5179/ \
+  watchexec \
+    --stop-signal SIGKILL \
+    -e py,html \
+    --ignore '*.db' \
+    --restart \
+    --clear -- \
+    just dev {{flags}}
+
+test *options:
+  uv run python -m pytest {{options}}
 
 format:
   black .

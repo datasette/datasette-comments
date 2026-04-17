@@ -1,0 +1,164 @@
+{
+  "$defs": {
+    "ActivitySearchResult": {
+      "properties": {
+        "author_actor_id": {
+          "title": "Author Actor Id",
+          "type": "string"
+        },
+        "author": {
+          "$ref": "#/$defs/Author"
+        },
+        "contents": {
+          "title": "Contents",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_duration_seconds": {
+          "title": "Created Duration Seconds",
+          "type": "integer"
+        },
+        "target_type": {
+          "title": "Target Type",
+          "type": "string"
+        },
+        "target_database": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Database"
+        },
+        "target_table": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Table"
+        },
+        "target_row_ids": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Row Ids"
+        },
+        "target_column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Column"
+        },
+        "target_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Label"
+        }
+      },
+      "required": [
+        "author_actor_id",
+        "author",
+        "contents",
+        "created_at",
+        "created_duration_seconds",
+        "target_type"
+      ],
+      "title": "ActivitySearchResult",
+      "type": "object"
+    },
+    "Author": {
+      "properties": {
+        "actor_id": {
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "profile_photo_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Photo Url"
+        },
+        "username": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Username"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "title": "Author",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "#/$defs/ActivitySearchResult"
+      },
+      "title": "Data",
+      "type": "array"
+    }
+  },
+  "required": [
+    "data"
+  ],
+  "title": "ActivitySearchResponse",
+  "type": "object"
+}

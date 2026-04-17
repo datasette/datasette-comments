@@ -33,13 +33,13 @@ actors = {{
         "id": "1",
         "username": "asg017",
         "name": "Alex Garcia",
-        "profile_picture_url": "{profile_pic('red')}",
+        "profile_picture_url": "{profile_pic("red")}",
     }},
     "2": {{
         "id": "2",
         "username": "simonw",
         "name": "Simon Willison",
-        "profile_picture_url": "{profile_pic('blue')}",
+        "profile_picture_url": "{profile_pic("blue")}",
     }},
 }}
 

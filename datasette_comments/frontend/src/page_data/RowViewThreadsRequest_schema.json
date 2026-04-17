@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "database": {
+      "title": "Database",
+      "type": "string"
+    },
+    "table": {
+      "title": "Table",
+      "type": "string"
+    },
+    "rowids": {
+      "title": "Rowids",
+      "type": "string"
+    }
+  },
+  "required": [
+    "database",
+    "table",
+    "rowids"
+  ],
+  "title": "RowViewThreadsRequest",
+  "type": "object"
+}

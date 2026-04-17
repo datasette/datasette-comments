@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "RowThreadItem": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "rowids": {
+          "title": "Rowids",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "rowids"
+      ],
+      "title": "RowThreadItem",
+      "type": "object"
+    },
+    "TableThreadItem": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "TableThreadItem",
+      "type": "object"
+    },
+    "TableViewThreadsData": {
+      "properties": {
+        "table_threads": {
+          "items": {
+            "$ref": "#/$defs/TableThreadItem"
+          },
+          "title": "Table Threads",
+          "type": "array"
+        },
+        "column_threads": {
+          "items": {},
+          "title": "Column Threads",
+          "type": "array"
+        },
+        "row_threads": {
+          "items": {
+            "$ref": "#/$defs/RowThreadItem"
+          },
+          "title": "Row Threads",
+          "type": "array"
+        },
+        "value_threads": {
+          "items": {},
+          "title": "Value Threads",
+          "type": "array"
+        }
+      },
+      "required": [
+        "table_threads",
+        "column_threads",
+        "row_threads",
+        "value_threads"
+      ],
+      "title": "TableViewThreadsData",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "data": {
+      "$ref": "#/$defs/TableViewThreadsData"
+    }
+  },
+  "required": [
+    "ok",
+    "data"
+  ],
+  "title": "TableViewThreadsResponse",
+  "type": "object"
+}

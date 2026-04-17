@@ -1,0 +1,66 @@
+{
+  "properties": {
+    "type": {
+      "title": "Type",
+      "type": "string"
+    },
+    "database": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Database"
+    },
+    "table": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Table"
+    },
+    "column": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Column"
+    },
+    "rowids": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rowids"
+    },
+    "comment": {
+      "title": "Comment",
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "comment"
+  ],
+  "title": "ThreadNewRequest",
+  "type": "object"
+}

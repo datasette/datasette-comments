@@ -1,0 +1,25 @@
+{
+  "properties": {
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "thread_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Thread Id"
+    }
+  },
+  "required": [
+    "ok"
+  ],
+  "title": "ThreadNewResponse",
+  "type": "object"
+}

@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "thread_id": {
+      "title": "Thread Id",
+      "type": "string"
+    },
+    "contents": {
+      "title": "Contents",
+      "type": "string"
+    }
+  },
+  "required": [
+    "thread_id",
+    "contents"
+  ],
+  "title": "CommentAddRequest",
+  "type": "object"
+}

@@ -1,0 +1,135 @@
+{
+  "$defs": {
+    "Author": {
+      "properties": {
+        "actor_id": {
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "profile_photo_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Photo Url"
+        },
+        "username": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Username"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "title": "Author",
+      "type": "object"
+    },
+    "ReactionData": {
+      "properties": {
+        "reactor_actor_id": {
+          "title": "Reactor Actor Id",
+          "type": "string"
+        },
+        "reaction": {
+          "title": "Reaction",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reactor_actor_id",
+        "reaction"
+      ],
+      "title": "ReactionData",
+      "type": "object"
+    },
+    "RenderNode": {
+      "properties": {
+        "node_type": {
+          "title": "Node Type",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_type",
+        "value"
+      ],
+      "title": "RenderNode",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "author": {
+      "$ref": "#/$defs/Author"
+    },
+    "contents": {
+      "title": "Contents",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_duration_seconds": {
+      "title": "Created Duration Seconds",
+      "type": "integer"
+    },
+    "render_nodes": {
+      "items": {
+        "$ref": "#/$defs/RenderNode"
+      },
+      "title": "Render Nodes",
+      "type": "array"
+    },
+    "reactions": {
+      "items": {
+        "$ref": "#/$defs/ReactionData"
+      },
+      "title": "Reactions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "author",
+    "contents",
+    "created_at",
+    "created_duration_seconds",
+    "render_nodes",
+    "reactions"
+  ],
+  "title": "CommentData",
+  "type": "object"
+}

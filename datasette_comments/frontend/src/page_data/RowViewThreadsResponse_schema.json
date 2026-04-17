@@ -1,0 +1,35 @@
+{
+  "$defs": {
+    "RowViewThreadsData": {
+      "properties": {
+        "row_threads": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Row Threads",
+          "type": "array"
+        }
+      },
+      "required": [
+        "row_threads"
+      ],
+      "title": "RowViewThreadsData",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "data": {
+      "$ref": "#/$defs/RowViewThreadsData"
+    }
+  },
+  "required": [
+    "ok",
+    "data"
+  ],
+  "title": "RowViewThreadsResponse",
+  "type": "object"
+}

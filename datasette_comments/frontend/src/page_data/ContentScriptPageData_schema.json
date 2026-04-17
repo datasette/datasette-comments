@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "Author": {
+      "properties": {
+        "actor_id": {
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "profile_photo_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Photo Url"
+        },
+        "username": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Username"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "title": "Author",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "view_name": {
+      "title": "View Name",
+      "type": "string"
+    },
+    "database": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Database"
+    },
+    "table": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Table"
+    },
+    "author": {
+      "$ref": "#/$defs/Author"
+    },
+    "readonly_viewer": {
+      "title": "Readonly Viewer",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "view_name",
+    "author",
+    "readonly_viewer"
+  ],
+  "title": "ContentScriptPageData",
+  "type": "object"
+}
