@@ -139,8 +139,8 @@ def register_routes():
 
 @hookimpl
 async def startup(datasette):
-    def migrate(connection):
-        db = Database(connection)
+    def migrate(conn):
+        db = Database(conn)
         internal_migrations.apply(db)
 
     await datasette.get_internal_database().execute_write_fn(migrate)
