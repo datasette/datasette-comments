@@ -63,34 +63,28 @@ The plugin hook can return a list, or it can return an awaitable function that r
 
 ## Development
 
-To set up this plugin locally, first checkout the code. Then create a new virtual environment:
+To set up this plugin locally, first checkout the code.
+
+The easiest way to run the tests (and commands needed to prepare the environment) is with [Just](https://github.com/casey/just):
 
 ```bash
 cd datasette-comments
-python3 -m venv venv
-source venv/bin/activate
+just
 ```
 
-Now install the dependencies and test dependencies:
-
+You can run the tests using `uv`:
 ```bash
-pip install -e '.[test]'
+uv run pytest
 ```
 
-And for the JavaScript dependencies (needed to run a JavaScript build):
+To install JavaScript dependencies (needed to run a JavaScript build):
 
 ```bash
 npm install
 ```
 
-To run the tests:
-
-```bash
-pytest
-```
-
 To rebuild the minified JavaScript after making a change to a `.ts` or `.tsx` file:
 
 ```bash
-just js
+just frontend
 ```

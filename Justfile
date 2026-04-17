@@ -1,3 +1,5 @@
+default: frontend test
+
 # Type generation
 types-routes:
   uv run python -c 'from datasette_comments.router import router; import json;print(json.dumps(router.openapi_document_json()))' \
@@ -15,6 +17,7 @@ types:
 
 # Frontend building
 frontend:
+  cd datasette_comments/frontend && [ -d node_modules ] || npm install
   cd datasette_comments/frontend && npx vite build
 
 frontend-dev:
