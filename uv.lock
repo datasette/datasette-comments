@@ -202,7 +202,7 @@ wheels = [
 
 [[package]]
 name = "datasette-comments"
-version = "0.1.1a3"
+version = "0.1.2a1"
 source = { editable = "." }
 dependencies = [
     { name = "datasette" },
