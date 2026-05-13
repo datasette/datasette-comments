@@ -39,14 +39,15 @@ dev *flags:
       {{flags}}
 
 dev-with-hmr *flags:
-  DATASETTE_COMMENTS_VITE_DEV=http://localhost:5179/ \
   watchexec \
     --stop-signal SIGKILL \
     -e py,html \
     --ignore '*.db' \
     --restart \
     --clear -- \
-    just dev {{flags}}
+    just dev \
+      -s plugins.datasette-vite.dev_ports.datasette_comments 5179 \
+      {{flags}}
 
 test *options:
   uv run python -m pytest {{options}}
