@@ -1,5 +1,3 @@
-import os
-
 from datasette import hookimpl
 from datasette.permissions import Action
 from datasette.plugins import pm
@@ -38,15 +36,12 @@ pm.add_hookspecs(hookspecs)
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 
-VITE_DEV_PATH = os.environ.get("DATASETTE_COMMENTS_VITE_DEV")
-
 
 @hookimpl
 def extra_template_vars(datasette):
     entry = vite_entry(
         datasette=datasette,
         plugin_package="datasette_comments",
-        vite_dev_path=VITE_DEV_PATH,
     )
     return {"datasette_comments_vite_entry": entry}
 
@@ -94,14 +89,12 @@ if _has_user_profiles:
                 datasette,
                 entrypoint=PROFILE_SECTION_ENTRYPOINT,
                 plugin_package="datasette_comments",
-                vite_dev_path=VITE_DEV_PATH,
             )
         ]
         css_urls = vite_css_urls(
             datasette,
             entrypoint=PROFILE_SECTION_ENTRYPOINT,
             plugin_package="datasette_comments",
-            vite_dev_path=VITE_DEV_PATH,
         )
         return [
             ProfileSection(
@@ -192,7 +185,6 @@ def extra_css_urls(template, database, table, columns, view_name, request, datas
             datasette=datasette,
             entrypoint=CONTENT_SCRIPT_ENTRYPOINT,
             plugin_package="datasette_comments",
-            vite_dev_path=VITE_DEV_PATH,
         )
 
     return inner
@@ -207,7 +199,6 @@ def extra_js_urls(template, database, table, columns, view_name, request, datase
             datasette=datasette,
             entrypoint=CONTENT_SCRIPT_ENTRYPOINT,
             plugin_package="datasette_comments",
-            vite_dev_path=VITE_DEV_PATH,
         )
 
     return inner

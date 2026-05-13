@@ -13,8 +13,8 @@ dependencies = [
   "python-ulid",
   "sqlite-migrate==0.1b0",
   "datasette-plugin-router>=0.0.1a2",
-  "datasette-vite>=0.0.1a3",
-  "datasette-user-profiles>=0.1.0a3",
+  "datasette-vite>=0.0.1a4",
+  "datasette-user-profiles>=0.1.0a6",
   "pydantic>=2",
 ]
 license = "Apache-2.0"
